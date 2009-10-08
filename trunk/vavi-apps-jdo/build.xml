@@ -1,0 +1,31 @@
+<?xml version='1.0'?>
+<project basedir='.' default='all' name='JDO'>
+  <property name='nant.settings.currentframework' value='mono-2.0'/>
+  <property name='build' value='JDO/bin/Debug'/>
+  <property name='src' value='JDO'/>
+  <target depends='target' name='all'/>
+  <target name='target'>
+    <csc debug='true' optimize='true' output='${build}/JDO.exe' target='exe' warninglevel='4'>
+      <sources>
+        <include name='${src}/**/*.cs'/>
+      </sources>
+      <resources dynamicprefix='true'>
+        <include name='${src}/**/*.resx'/>
+        <include name='${src}/*.png'/>
+      </resources>
+      <references>
+        <include name='System.dll'/>
+        <include name='System.Data.dll'/>
+        <include name='System.Drawing.dll'/>
+        <include name='System.Linq.dll'/>
+        <include name='System.Windows.Forms.dll'/>
+        <include name='System.XML.dll'/>
+      </references>
+    </csc>
+  </target>
+  <target depends='target' name='run'>
+    <exec program='/opt/local/bin/mono' workingdir='${build}'>
+      <arg value='JDO.exe'/>
+    </exec>
+  </target>
+</project>
