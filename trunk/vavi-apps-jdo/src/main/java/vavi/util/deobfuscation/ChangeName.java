@@ -13,9 +13,9 @@ public class ChangeName extends JDialog {
 
     public ChangeName() {
         this.label1 = new JLabel();
-        this.SaveButton = new JButton();
-        this.NameBox = new JTextField();
-        this.CancelButton = new JButton();
+        this.saveButton = new JButton();
+        this.nameBox = new JTextField();
+        this.cancelButton = new JButton();
         this.setLayout(null);
         // 
         // label1
@@ -30,28 +30,28 @@ public class ChangeName extends JDialog {
         // SaveButton
         // 
 //        this.SaveButton.DialogResult = System.Windows.Forms.DialogResult.OK;
-        this.SaveButton.setLocation(368, 45);
-        this.SaveButton.setName("SaveButton");
-        this.SaveButton.setSize(new Dimension(83, 24));
+        this.saveButton.setLocation(368, 45);
+        this.saveButton.setName("SaveButton");
+        this.saveButton.setSize(new Dimension(83, 24));
 //        this.SaveButton.TabIndex = 2;
-        this.SaveButton.setText("&Save");
+        this.saveButton.setText("&Save");
 //        this.SaveButton.UseVisualStyleBackColor = true;
         // 
         // NameBox
         // 
-        this.NameBox.setLocation(119, 19);
-        this.NameBox.setName("NameBox");
-        this.NameBox.setSize(new Dimension(334, 20));
+        this.nameBox.setLocation(119, 19);
+        this.nameBox.setName("NameBox");
+        this.nameBox.setSize(new Dimension(334, 20));
 //        this.NameBox.TabIndex = 3;
         // 
         // CancelButton
         // 
 //        this.CancelButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-        this.CancelButton.setLocation(270, 45);
-        this.CancelButton.setName("CancelButton");
-        this.CancelButton.setSize(new Dimension(83, 24));
+        this.cancelButton.setLocation(270, 45);
+        this.cancelButton.setName("CancelButton");
+        this.cancelButton.setSize(new Dimension(83, 24));
 //        this.CancelButton.TabIndex = 4;
-        this.CancelButton.setText("&Cancel");
+        this.cancelButton.setText("&Cancel");
 //        this.CancelButton.UseVisualStyleBackColor = true;
         // 
         // ChangeName
@@ -60,9 +60,9 @@ public class ChangeName extends JDialog {
 //        this.AutoScaleDimensions = new DimensionF(6F, 13F);
 //        this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
         this.setSize(new Dimension(463, 78));
-        add(this.CancelButton);
-        add(this.NameBox);
-        add(this.SaveButton);
+        add(this.cancelButton);
+        add(this.nameBox);
+        add(this.saveButton);
         add(this.label1);
 //        this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
         this.setName("ChangeName");
@@ -74,7 +74,7 @@ public class ChangeName extends JDialog {
     }
 
     private JLabel label1;
-    private JButton SaveButton;
-    public JTextField NameBox;
-    private JButton CancelButton;
+    private JButton saveButton;
+    public JTextField nameBox;
+    private JButton cancelButton;
 }

@@ -6,7 +6,9 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
-import java.util.Hashtable;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 
 // important enums
@@ -108,70 +110,59 @@ enum AttributeType {
     StackMapTable
 }
 
-//
-// CONSTANT POOL STRUCTURES
-//
-
 abstract class ConstantPoolInfo {
     public int tag;
-
     public int references;
-
     public abstract void read(int tag, DataInput Reader) throws IOException;
-
-    public abstract boolean resolve(ArrayList<?> FItems) throws IOException;
+    public abstract boolean resolve(List<?> FItems) throws IOException;
 }
 
 abstract class ConstantPoolMethodInfo extends ConstantPoolInfo {
-    public ConstantClassInfo ParentClass;
+    public ConstantClassInfo parentClass;
+    public ConstantNameAndTypeInfo nameAndType;
+    // private int classIndex;
+    // private int nameAndTypeIndex;
 
-    public ConstantNameAndTypeInfo NameAndType;
-
-    // private int ClassIndex;
-    // private int NameAndTypeIndex;
-
-    public abstract void SetNameAndType(int Index, TConstantPool ConstantPool);
-
-    public abstract void SetParent(int Index, TConstantPool ConstantPool);
+    public abstract void setNameAndType(int index, ConstantPool constantPool);
+    public abstract void setParent(int index, ConstantPool constantPool);
 }
 
 abstract class ConstantPoolVariableInfo extends ConstantPoolInfo {
-    public Object Value;
+    public Object value;
 }
 
 class ConstantClassInfo extends ConstantPoolInfo {
-    public int NameIndex;
-
-    public String Name;
+    public int nameIndex;
+    public String name;
 
     public ConstantClassInfo() {
-        Name = "";
-        NameIndex = 0;
+        name = "";
+        nameIndex = 0;
         tag = ConstantPoolInfoTag.ConstantClass.value;
         references = 0;
     }
 
     @Override
-    public void read(int tag, DataInput Reader) throws IOException {
+    public void read(int tag, DataInput reader) throws IOException {
             this.tag = tag;
-            NameIndex = Common.readShort(Reader);
-            NameIndex--;
+            nameIndex = Common.readShort(reader);
+            nameIndex--;
     }
 
     public void write(DataOutput writer) throws IOException {
         // write the tag
         Common.writeByte(writer, tag);
-        Common.writeShort(writer, NameIndex + 1);
+        Common.writeShort(writer, nameIndex + 1);
     }
 
     @Override
-    public boolean resolve(ArrayList<?> FItems) throws IOException {
+    public boolean resolve(List<?> items) throws IOException {
         // use the index into the constant pool table
         // to find our UTF8 encoded class or interface name
-        if (NameIndex < FItems.size()) {
-            Object o = FItems.get(NameIndex);
+        if (nameIndex < items.size()) {
+            Object o = items.get(nameIndex);
             if (o instanceof ConstantUtf8Info) {
-                Name = new String(((ConstantUtf8Info) o).Bytes, "UTF-8");
+                name = new String(((ConstantUtf8Info) o).bytes, "UTF-8");
                 ((ConstantPoolInfo) o).references++;
 
                 return true;
@@ -181,48 +172,47 @@ class ConstantClassInfo extends ConstantPoolInfo {
         return false;
     }
 
-    public void SetName(int Index, TConstantPool ConstantPool) {
-        NameIndex = Index;
-        Name = ((ConstantUtf8Info) ConstantPool.getItem(Index)).Value;
+    public void setName(int index, ConstantPool constantPool) {
+        nameIndex = index;
+        name = ((ConstantUtf8Info) constantPool.getItem(index)).value;
         references++;
     }
 }
 
 class ConstantFieldrefInfo extends ConstantPoolMethodInfo {
-    private int ClassIndex;
-
-    private int NameAndTypeIndex;
+    private int classIndex;
+    private int nameAndTypeIndex;
 
      @Override
-     public void read(int tag, DataInput Reader) throws IOException {
+     public void read(int tag, DataInput reader) throws IOException {
             this.tag = tag;
-            ClassIndex = Common.readShort(Reader);
-            NameAndTypeIndex = Common.readShort(Reader);
-            ClassIndex--;
-            NameAndTypeIndex--;
+            classIndex = Common.readShort(reader);
+            nameAndTypeIndex = Common.readShort(reader);
+            classIndex--;
+            nameAndTypeIndex--;
     }
 
     public void write(DataOutput writer) throws IOException {
         // write the tag
         Common.writeByte(writer, tag);
-        Common.writeShort(writer, ClassIndex + 1);
-        Common.writeShort(writer, NameAndTypeIndex + 1);
+        Common.writeShort(writer, classIndex + 1);
+        Common.writeShort(writer, nameAndTypeIndex + 1);
     }
 
     @Override
-    public boolean resolve(ArrayList<?> FItems) {
+    public boolean resolve(List<?> items) {
         // use the index into the constant pool table
         // to find our UTF8 encoded class or interface name
-        if (ClassIndex < FItems.size() && NameAndTypeIndex < FItems.size()) {
-            Object o = FItems.get(ClassIndex);
+        if (classIndex < items.size() && nameAndTypeIndex < items.size()) {
+            Object o = items.get(classIndex);
             if (o instanceof ConstantClassInfo) {
-                ParentClass = (ConstantClassInfo) o;
+                parentClass = (ConstantClassInfo) o;
                 ((ConstantPoolInfo) o).references++;
             }
 
-            o = FItems.get(NameAndTypeIndex);
+            o = items.get(nameAndTypeIndex);
             if (o instanceof ConstantNameAndTypeInfo) {
-                NameAndType = (ConstantNameAndTypeInfo) o;
+                nameAndType = (ConstantNameAndTypeInfo) o;
                 ((ConstantPoolInfo) o).references++;
             }
 
@@ -233,55 +223,54 @@ class ConstantFieldrefInfo extends ConstantPoolMethodInfo {
     }
 
     @Override
-    public void SetNameAndType(int Index, TConstantPool ConstantPool) {
-        NameAndTypeIndex = Index;
-        NameAndType = (ConstantNameAndTypeInfo) ConstantPool.getItem(Index);
-        NameAndType.references++;
+    public void setNameAndType(int index, ConstantPool constantPool) {
+        nameAndTypeIndex = index;
+        nameAndType = (ConstantNameAndTypeInfo) constantPool.getItem(index);
+        nameAndType.references++;
     }
 
     @Override
-    public void SetParent(int Index, TConstantPool ConstantPool) {
-        ClassIndex = Index;
-        ParentClass = (ConstantClassInfo) ConstantPool.getItem(Index);
-        ParentClass.references++;
+    public void setParent(int index, ConstantPool constantPool) {
+        classIndex = index;
+        parentClass = (ConstantClassInfo) constantPool.getItem(index);
+        parentClass.references++;
     }
 }
 
 class ConstantMethodrefInfo extends ConstantPoolMethodInfo {
-    private int ClassIndex;
-
-    private int NameAndTypeIndex;
+    private int classIndex;
+    private int nameAndTypeIndex;
 
     @Override
     public void read(int tag, DataInput Reader) throws IOException {
             this.tag = tag;
-            ClassIndex = Common.readShort(Reader);
-            NameAndTypeIndex = Common.readShort(Reader);
-            ClassIndex--;
-            NameAndTypeIndex--;
+            classIndex = Common.readShort(Reader);
+            nameAndTypeIndex = Common.readShort(Reader);
+            classIndex--;
+            nameAndTypeIndex--;
     }
 
     public void write(DataOutput writer) throws IOException {
         // write the tag
         Common.writeByte(writer, tag);
-        Common.writeShort(writer, ClassIndex + 1);
-        Common.writeShort(writer, NameAndTypeIndex + 1);
+        Common.writeShort(writer, classIndex + 1);
+        Common.writeShort(writer, nameAndTypeIndex + 1);
     }
 
     @Override
-    public boolean resolve(ArrayList<?> FItems) {
+    public boolean resolve(List<?> items) {
         // use the index into the constant pool table
         // to find our UTF8 encoded class or interface name
-        if (ClassIndex < FItems.size() && NameAndTypeIndex < FItems.size()) {
-            Object o = FItems.get(ClassIndex);
+        if (classIndex < items.size() && nameAndTypeIndex < items.size()) {
+            Object o = items.get(classIndex);
             if (o instanceof ConstantClassInfo) {
-                ParentClass = (ConstantClassInfo) o;
+                parentClass = (ConstantClassInfo) o;
                 ((ConstantPoolInfo) o).references++;
             }
 
-            o = FItems.get(NameAndTypeIndex);
+            o = items.get(nameAndTypeIndex);
             if (o instanceof ConstantNameAndTypeInfo) {
-                NameAndType = (ConstantNameAndTypeInfo) o;
+                nameAndType = (ConstantNameAndTypeInfo) o;
                 ((ConstantPoolInfo) o).references++;
             }
 
@@ -292,55 +281,54 @@ class ConstantMethodrefInfo extends ConstantPoolMethodInfo {
     }
 
     @Override
-    public void SetNameAndType(int Index, TConstantPool ConstantPool) {
-        NameAndTypeIndex = Index;
-        NameAndType = (ConstantNameAndTypeInfo) ConstantPool.getItem(Index);
-        NameAndType.references++;
+    public void setNameAndType(int Index, ConstantPool constantPool) {
+        nameAndTypeIndex = Index;
+        nameAndType = (ConstantNameAndTypeInfo) constantPool.getItem(Index);
+        nameAndType.references++;
     }
 
     @Override
-    public void SetParent(int Index, TConstantPool ConstantPool) {
-        ClassIndex = Index;
-        ParentClass = (ConstantClassInfo) ConstantPool.getItem(Index);
-        ParentClass.references++;
+    public void setParent(int index, ConstantPool constantPool) {
+        classIndex = index;
+        parentClass = (ConstantClassInfo) constantPool.getItem(index);
+        parentClass.references++;
     }
 }
 
 class ConstantInterfaceMethodrefInfo extends ConstantPoolMethodInfo {
-    private int ClassIndex;
-
-    private int NameAndTypeIndex;
+    private int classIndex;
+    private int nameAndTypeIndex;
 
     @Override
     public void read(int tag, DataInput Reader) throws IOException {
             this.tag = tag;
-            ClassIndex = Common.readShort(Reader);
-            NameAndTypeIndex = Common.readShort(Reader);
-            ClassIndex--;
-            NameAndTypeIndex--;
+            classIndex = Common.readShort(Reader);
+            nameAndTypeIndex = Common.readShort(Reader);
+            classIndex--;
+            nameAndTypeIndex--;
     }
 
     public void write(DataOutput writer) throws IOException {
         // write the tag
         Common.writeByte(writer, tag);
-        Common.writeShort(writer, ClassIndex + 1);
-        Common.writeShort(writer, NameAndTypeIndex + 1);
+        Common.writeShort(writer, classIndex + 1);
+        Common.writeShort(writer, nameAndTypeIndex + 1);
     }
 
     @Override
-    public boolean resolve(ArrayList<?> FItems) {
+    public boolean resolve(List<?> items) {
         // use the index into the constant pool table
         // to find our UTF8 encoded class or interface name
-        if (ClassIndex <= FItems.size() && NameAndTypeIndex <= FItems.size()) {
-            Object o = FItems.get(ClassIndex);
+        if (classIndex <= items.size() && nameAndTypeIndex <= items.size()) {
+            Object o = items.get(classIndex);
             if (o instanceof ConstantClassInfo) {
-                ParentClass = (ConstantClassInfo) o;
+                parentClass = (ConstantClassInfo) o;
                 ((ConstantPoolInfo) o).references++;
             }
 
-            o = FItems.get(NameAndTypeIndex);
+            o = items.get(nameAndTypeIndex);
             if (o instanceof ConstantNameAndTypeInfo) {
-                NameAndType = (ConstantNameAndTypeInfo) o;
+                nameAndType = (ConstantNameAndTypeInfo) o;
                 ((ConstantPoolInfo) o).references++;
             }
 
@@ -351,45 +339,45 @@ class ConstantInterfaceMethodrefInfo extends ConstantPoolMethodInfo {
     }
 
     @Override
-    public void SetNameAndType(int Index, TConstantPool ConstantPool) {
-        NameAndTypeIndex = Index;
+    public void setNameAndType(int index, ConstantPool constantPool) {
+        nameAndTypeIndex = index;
     }
 
     @Override
-    public void SetParent(int Index, TConstantPool ConstantPool) {
-        ClassIndex = Index;
+    public void setParent(int index, ConstantPool constantPool) {
+        classIndex = index;
     }
 }
 
 class ConstantStringInfo extends ConstantPoolVariableInfo {
-    private int NameIndex;
+    private int nameIndex;
 
     public ConstantStringInfo() {
-        NameIndex = 0;
-        Value = "";
+        nameIndex = 0;
+        value = "";
     }
 
     @Override
-    public void read(int tag, DataInput Reader) throws IOException {
+    public void read(int tag, DataInput reader) throws IOException {
             this.tag = tag;
-            NameIndex = Common.readShort(Reader);
-            NameIndex--;
+            nameIndex = Common.readShort(reader);
+            nameIndex--;
     }
 
     public void write(DataOutput writer) throws IOException {
         // write the tag
         Common.writeByte(writer, tag);
-        Common.writeShort(writer, NameIndex + 1);
+        Common.writeShort(writer, nameIndex + 1);
     }
 
     @Override
-    public boolean resolve(ArrayList<?> FItems) throws IOException {
+    public boolean resolve(List<?> items) throws IOException {
         // use the index into the constant pool table
         // to find our UTF8 encoded class or interface name
-        if (NameIndex < FItems.size()) {
-            Object o = FItems.get(NameIndex);
+        if (nameIndex < items.size()) {
+            Object o = items.get(nameIndex);
             if (o instanceof ConstantUtf8Info) {
-                Value = new String(((ConstantUtf8Info) o).Bytes, "UTF-8");
+                value = new String(((ConstantUtf8Info) o).bytes, "UTF-8");
                 ((ConstantPoolInfo) o).references++;
 
                 return true;
@@ -401,128 +389,123 @@ class ConstantStringInfo extends ConstantPoolVariableInfo {
 }
 
 class ConstantIntegerInfo extends ConstantPoolVariableInfo {
-    private int Bytes;
+    private int bytes;
 
     @Override
-    public void read(int tag, DataInput Reader) throws IOException {
+    public void read(int tag, DataInput reader) throws IOException {
             this.tag = tag;
-            Bytes = Common.readInt(Reader);
+            bytes = Common.readInt(reader);
     }
 
     public void write(DataOutput writer) throws IOException {
         // write the tag
         Common.writeByte(writer, tag);
-        Common.writeInt(writer, Bytes);
+        Common.writeInt(writer, bytes);
     }
 
     @Override
-    public boolean resolve(ArrayList<?> FItems) {
-        Value = (int) Bytes;
+    public boolean resolve(List<?> items) {
+        value = (int) bytes;
         return true;
     }
 }
 
 class ConstantFloatInfo extends ConstantPoolVariableInfo {
-    private int Bytes;
+    private int bytes;
 
     @Override
-    public void read(int tag, DataInput Reader) throws IOException {
+    public void read(int tag, DataInput reader) throws IOException {
             this.tag = tag;
-            Bytes = Common.readInt(Reader);
+            bytes = Common.readInt(reader);
     }
 
     public void write(DataOutput writer) throws IOException {
         // write the tag
         Common.writeByte(writer, tag);
-        Common.writeInt(writer, Bytes);
+        Common.writeInt(writer, bytes);
     }
 
     @Override
-    public boolean resolve(ArrayList<?> FItems) {
-        Value = Float.intBitsToFloat(Bytes);
+    public boolean resolve(List<?> items) {
+        value = Float.intBitsToFloat(bytes);
         return true;
     }
 }
 
 class ConstantLongInfo extends ConstantPoolVariableInfo {
-    private int HighBytes;
-
-    private int LowBytes;
+    private int highBytes;
+    private int lowBytes;
 
     @Override
     public void read(int tag, DataInput Reader) throws IOException {
             this.tag = tag;
-            HighBytes = Common.readInt(Reader);
-            LowBytes = Common.readInt(Reader);
-            Value = ((long) HighBytes << 32) + LowBytes;
+            highBytes = Common.readInt(Reader);
+            lowBytes = Common.readInt(Reader);
+            value = ((long) highBytes << 32) + lowBytes;
     }
 
     public void write(DataOutput writer) throws IOException {
         // write the tag
         Common.writeByte(writer, tag);
-        Common.writeInt(writer, HighBytes);
-        Common.writeInt(writer, LowBytes);
+        Common.writeInt(writer, highBytes);
+        Common.writeInt(writer, lowBytes);
     }
 
     @Override
-    public boolean resolve(ArrayList<?> FItems) {
+    public boolean resolve(List<?> items) {
         return true;
     }
 }
 
 class ConstantDoubleInfo extends ConstantPoolVariableInfo {
-    private int HighBytes;
+    private int highBytes;
+    private int lowBytes;
 
-    private int LowBytes;
-
-    public @Override
-    void read(int tag, DataInput Reader) throws IOException {
+    @Override
+    public void read(int tag, DataInput reader) throws IOException {
             this.tag = tag;
-            HighBytes = Common.readInt(Reader);
-            LowBytes = Common.readInt(Reader);
-            Value = "NOT_IMPLEMENTED";
+            highBytes = Common.readInt(reader);
+            lowBytes = Common.readInt(reader);
+            value = "NOT_IMPLEMENTED";
     }
 
     public void write(DataOutput writer) throws IOException {
         // write the tag
         Common.writeByte(writer, tag);
-        Common.writeInt(writer, HighBytes);
-        Common.writeInt(writer, LowBytes);
+        Common.writeInt(writer, highBytes);
+        Common.writeInt(writer, lowBytes);
     }
 
     @Override
-    public boolean resolve(ArrayList<?> FItems) {
-        Value = Double.longBitsToDouble(((long) HighBytes << 32) + LowBytes);
+    public boolean resolve(List<?> items) {
+        value = Double.longBitsToDouble(((long) highBytes << 32) + lowBytes);
         return true;
     }
 }
 
 class ConstantNameAndTypeInfo extends ConstantPoolInfo {
-    private int FNameIndex;
-
-    private int FDescriptorIndex;
-
-    public String Name;
-
-    public String Descriptor;
+    private int nameIndex;
+    private int descriptorIndex;
+    public String name;
+    public String descriptor;
 
     public ConstantNameAndTypeInfo() {
         tag = ConstantPoolInfoTag.ConstantNameAndType.value;
-        FNameIndex = 0;
-        FDescriptorIndex = 0;
-        Name = "";
-        Descriptor = "";
+        nameIndex = 0;
+        descriptorIndex = 0;
+        name = "";
+        descriptor = "";
     }
 
-    public ConstantNameAndTypeInfo(int IndexName, int IndexType, TConstantPool ConstantPool) {
+    public ConstantNameAndTypeInfo(int indexName, int indexType, ConstantPool constantPool) {
         try {
             tag = ConstantPoolInfoTag.ConstantNameAndType.value;
-            FNameIndex = IndexName;
-            FDescriptorIndex = IndexType;
-            Name = new String(((ConstantUtf8Info) ConstantPool.getItem(IndexName)).Bytes, "UTF-8");
-            ConstantPool.getItem(IndexName).references++;
-            Descriptor = new String(((ConstantUtf8Info) ConstantPool.getItem(IndexType)).Bytes, "UTF-8");
-            ConstantPool.getItem(IndexType).references++;
+            nameIndex = indexName;
+            descriptorIndex = indexType;
+            name = new String(((ConstantUtf8Info) constantPool.getItem(indexName)).bytes, "UTF-8");
+            constantPool.getItem(indexName).references++;
+            descriptor = new String(((ConstantUtf8Info) constantPool.getItem(indexType)).bytes, "UTF-8");
+            constantPool.getItem(indexType).references++;
         } catch (UnsupportedEncodingException e) {
 System.err.println(e);
             assert false;
@@ -530,11 +513,11 @@ System.err.println(e);
     }
 
     // where index instanceof a valid index into the constant pool table
-    public void SetName(int Index, TConstantPool ConstantPool) {
+    public void SetName(int index, ConstantPool constantPool) {
         try {
-            FNameIndex = Index;
-            Name = new String(((ConstantUtf8Info) ConstantPool.getItem(Index)).Bytes, "UTF-8");
-            ConstantPool.getItem(Index).references++;
+            nameIndex = index;
+            name = new String(((ConstantUtf8Info) constantPool.getItem(index)).bytes, "UTF-8");
+            constantPool.getItem(index).references++;
         } catch (UnsupportedEncodingException e) {
 System.err.println(e);
             assert false;
@@ -542,214 +525,202 @@ System.err.println(e);
     }
 
     // where index instanceof a valid index into the constant pool table
-    public void SetType(int Index, TConstantPool ConstantPool) {
+    public void SetType(int index, ConstantPool constantPool) {
         try {
-            FDescriptorIndex = Index;
-            Descriptor = new String(((ConstantUtf8Info) ConstantPool.getItem(Index)).Bytes, "UTF-8");
-            ConstantPool.getItem(Index).references++;
+            descriptorIndex = index;
+            descriptor = new String(((ConstantUtf8Info) constantPool.getItem(index)).bytes, "UTF-8");
+            constantPool.getItem(index).references++;
         } catch (UnsupportedEncodingException e) {
 System.err.println(e);
             assert false;
         }
     }
 
-    public @Override
-    void read(int tag, DataInput Reader) throws IOException {
+    @Override
+    public void read(int tag, DataInput reader) throws IOException {
             this.tag = tag;
-            FNameIndex = Common.readShort(Reader);
-            FNameIndex--;
-            FDescriptorIndex = Common.readShort(Reader);
-            FDescriptorIndex--;
+            nameIndex = Common.readShort(reader);
+            nameIndex--;
+            descriptorIndex = Common.readShort(reader);
+            descriptorIndex--;
     }
 
     public void write(DataOutput writer) throws IOException {
         // write the tag
         Common.writeByte(writer, tag);
-        Common.writeShort(writer, FNameIndex + 1);
-        Common.writeShort(writer, FDescriptorIndex + 1);
+        Common.writeShort(writer, nameIndex + 1);
+        Common.writeShort(writer, descriptorIndex + 1);
     }
 
     @Override
-    public boolean resolve(ArrayList<?> FItems) {
+    public boolean resolve(List<?> items) {
         try {
-            Name = null;
+            name = null;
 
-            if (FNameIndex < FItems.size()) {
-                Object o = FItems.get(FNameIndex);
+            if (nameIndex < items.size()) {
+                Object o = items.get(nameIndex);
                 if (o instanceof ConstantUtf8Info) {
-                    Name = new String(((ConstantUtf8Info) o).Bytes, "UTF-8");
+                    name = new String(((ConstantUtf8Info) o).bytes, "UTF-8");
                     ((ConstantPoolInfo) o).references++;
                 }
             }
 
         } catch (Exception e) {
 e.printStackTrace(System.err);
-            if (Name == null)
-                Name = "Error retrieving Name!";
+            if (name == null)
+                name = "Error retrieving Name!";
         }
 
         try {
-            Descriptor = null;
+            descriptor = null;
 
-            if (FDescriptorIndex < FItems.size()) {
-                Object o = FItems.get(FDescriptorIndex);
+            if (descriptorIndex < items.size()) {
+                Object o = items.get(descriptorIndex);
                 if (o instanceof ConstantUtf8Info) {
-                    Descriptor = new String(((ConstantUtf8Info) o).Bytes, "UTF-8");
+                    descriptor = new String(((ConstantUtf8Info) o).bytes, "UTF-8");
                     ((ConstantPoolInfo) o).references++;
                 }
             }
         } catch (Exception e) {
 e.printStackTrace(System.err);
-            if (Descriptor == null)
-                Descriptor = "Error retrieving Descriptor!";
+            if (descriptor == null)
+                descriptor = "Error retrieving Descriptor!";
         }
 
         return true;
     }
 
     public int getNameIndex() {
-
-        {
-            return FNameIndex;
-        }
+        return nameIndex;
     }
 
     public int getTypeIndex() {
-
-        {
-            return FDescriptorIndex;
-        }
+        return descriptorIndex;
     }
 }
 
 class ConstantUtf8Info extends ConstantPoolInfo {
-    public int Length;
-
-    public byte[] Bytes;
-
-    public String Value;
+    public int length;
+    public byte[] bytes;
+    public String value;
 
     public ConstantUtf8Info() {
-        Bytes = null;
-        Length = 0;
+        bytes = null;
+        length = 0;
         tag = ConstantPoolInfoTag.ConstantUtf8.value;
         references = 0;
     }
 
-    public ConstantUtf8Info(String Text) {
+    public ConstantUtf8Info(String text) {
         try {
             tag = ConstantPoolInfoTag.ConstantUtf8.value;
-            Bytes = Text.getBytes("UTF-8");
-            Length = Bytes.length;
-            Value = new String(Bytes, "UTF-8");
+            bytes = text.getBytes("UTF-8");
+            length = bytes.length;
+            value = new String(bytes, "UTF-8");
         } catch (UnsupportedEncodingException e) {
 System.err.println(e);
             assert false;
         }
     }
 
-    public void SetName(String Text) {
+    public void setName(String text) {
         try {
-            Bytes = Text.getBytes("UTF-8");
-            Length = Bytes.length;
-            Value = new String(Bytes, "UTF-8");
+            bytes = text.getBytes("UTF-8");
+            length = bytes.length;
+            value = new String(bytes, "UTF-8");
         } catch (UnsupportedEncodingException e) {
 System.err.println(e);
             assert false;
         }
     }
 
-    public @Override
-    void read(int tag, DataInput Reader) throws IOException {
+    @Override
+    public void read(int tag, DataInput reader) throws IOException {
             this.tag = tag;
-            Length = Common.readShort(Reader);
-            Bytes = new byte[Length];
-            Reader.readFully(Bytes, 0, Length);
-            Common.position += Length;
+            length = Common.readShort(reader);
+            bytes = new byte[length];
+            reader.readFully(bytes, 0, length);
+            Common.position += length;
 
-            Value = new String(Bytes, "UTF-8");
+            value = new String(bytes, "UTF-8");
     }
 
     public void write(DataOutput writer) throws IOException {
         // write the tag
         Common.writeByte(writer, tag);
-        Common.writeShort(writer, Length);
-        writer.write(Bytes);
-        Common.position += Length;
+        Common.writeShort(writer, length);
+        writer.write(bytes);
+        Common.position += length;
     }
 
-    public @Override
-    boolean resolve(ArrayList<?> FItems) {
+    @Override
+    public boolean resolve(List<?> items) {
         return true;
     }
 }
 
-// 
-// FIELD STRUCTURES
-// 
-
 class FieldInfo {
-    int FAccessFlags;
-    int FNameIndex;
-    int FDescriptorIndex;
-    ConstantUtf8Info FName;
-    ConstantUtf8Info FDescriptor;
-    TAttributes FAttributes;
+    int accessFlags;
+    int nameIndex;
+    int descriptorIndex;
+    ConstantUtf8Info name;
+    ConstantUtf8Info descriptor;
+    Attributes attributes;
 
     // my vars
-    long FOffset;
+    long offset;
 
     private FieldInfo() {
     }
 
-    public FieldInfo(DataInput Reader, TConstantPool ConstantPool) {
-        FAccessFlags = 0;
-        FNameIndex = 0;
-        FDescriptorIndex = 0;
-        FName = null;
-        FDescriptor = null;
-        FAttributes = null;
-        FOffset = 0;
+    public FieldInfo(DataInput reader, ConstantPool constantPool) {
+        accessFlags = 0;
+        nameIndex = 0;
+        descriptorIndex = 0;
+        name = null;
+        descriptor = null;
+        attributes = null;
+        offset = 0;
 
         try {
-            FOffset = Common.position;
-            FAccessFlags = Common.readShort(Reader);
-            FNameIndex = Common.readShort(Reader);
-            FNameIndex--;
-            FDescriptorIndex = Common.readShort(Reader);
-            FDescriptorIndex--;
+            offset = Common.position;
+            accessFlags = Common.readShort(reader);
+            nameIndex = Common.readShort(reader);
+            nameIndex--;
+            descriptorIndex = Common.readShort(reader);
+            descriptorIndex--;
             // resolve the references
-            FDescriptor = (ConstantUtf8Info) ConstantPool.getItem(FDescriptorIndex);
-            FDescriptor.references++;
-            FName = (ConstantUtf8Info) ConstantPool.getItem(FNameIndex);
-            FName.references++;
+            descriptor = (ConstantUtf8Info) constantPool.getItem(descriptorIndex);
+            descriptor.references++;
+            name = (ConstantUtf8Info) constantPool.getItem(nameIndex);
+            name.references++;
             // Attributes should be able to handle any/all attribute streams
-            FAttributes = new TAttributes(Reader, ConstantPool);
+            attributes = new Attributes(reader, constantPool);
         } catch (Exception e) {
 e.printStackTrace(System.err);
             // do nothing for now
         }
     }
 
-    public void SetName(int index, TConstantPool ConstantPool) {
-        FNameIndex = index;
-        FName = (ConstantUtf8Info) ConstantPool.getItem(FNameIndex);
-        FName.references++;
+    public void setName(int index, ConstantPool constantPool) {
+        nameIndex = index;
+        name = (ConstantUtf8Info) constantPool.getItem(nameIndex);
+        name.references++;
     }
 
     public ConstantUtf8Info getName() {
-        return FName;
+        return name;
     }
 
     public void write(DataOutput writer) {
         try {
-            FOffset = Common.position;
-            Common.writeShort(writer, FAccessFlags);
-            Common.writeShort(writer, FNameIndex + 1);
-            Common.writeShort(writer, FDescriptorIndex + 1);
+            offset = Common.position;
+            Common.writeShort(writer, accessFlags);
+            Common.writeShort(writer, nameIndex + 1);
+            Common.writeShort(writer, descriptorIndex + 1);
 
             // Attributes should be able to handle any/all attribute streams
-            FAttributes.Write(writer);
+            attributes.write(writer);
         } catch (Exception e) {
 e.printStackTrace(System.err);
             // do nothing for now
@@ -757,102 +728,93 @@ e.printStackTrace(System.err);
     }
 
     public String getDescriptor() {
-        return FDescriptor.Value;
+        return descriptor.value;
     }
 
     public int getNameIndex() {
-        return FNameIndex;
+        return nameIndex;
     }
 
-    public TAttributes getAttributes() {
-        return FAttributes;
+    public Attributes getAttributes() {
+        return attributes;
     }
 
     public long getOffset() {
-        return FOffset;
+        return offset;
     }
 
     public Object clone() {
             FieldInfo newFileInfo = new FieldInfo();
-            newFileInfo.FAccessFlags = FAccessFlags;
-            newFileInfo.FNameIndex = FNameIndex;
-            newFileInfo.FDescriptorIndex = FDescriptorIndex;
-            newFileInfo.FName = FName;
-            newFileInfo.FDescriptor = FDescriptor;
-            newFileInfo.FAttributes = FAttributes;
-            newFileInfo.FOffset = FOffset;
+            newFileInfo.accessFlags = accessFlags;
+            newFileInfo.nameIndex = nameIndex;
+            newFileInfo.descriptorIndex = descriptorIndex;
+            newFileInfo.name = name;
+            newFileInfo.descriptor = descriptor;
+            newFileInfo.attributes = attributes;
+            newFileInfo.offset = offset;
             return newFileInfo;
     }
 
-    public void SetType(int index, TConstantPool ConstantPool) {
-        FDescriptorIndex = index;
-        FDescriptor = (ConstantUtf8Info) ConstantPool.getItem(FDescriptorIndex);
-        FDescriptor.references++;
+    public void setType(int index, ConstantPool constantPool) {
+        descriptorIndex = index;
+        descriptor = (ConstantUtf8Info) constantPool.getItem(descriptorIndex);
+        descriptor.references++;
     }
 }
 
-// //
-// METHODINFO STRUCTURES //
-// //
-
 class MethodInfo {
-    int FAccessFlags;
-
-    int FNameIndex;
-
-    int FDescriptorIndex;
-
-    ConstantUtf8Info FName;
-
-    ConstantUtf8Info FDescriptor;
-
-    TAttributes FAttributes;
+    int accessFlags;
+    int nameIndex;
+    int descriptorIndex;
+    ConstantUtf8Info name;
+    ConstantUtf8Info descriptor;
+    Attributes attributes;
 
     private MethodInfo() {
     }
 
-    public MethodInfo(DataInput Reader, TConstantPool ConstantPool) {
-        FAccessFlags = 0;
-        FNameIndex = 0;
-        FDescriptorIndex = 0;
-        FName = null;
-        FDescriptor = null;
-        FAttributes = null;
+    public MethodInfo(DataInput reader, ConstantPool constantPool) {
+        this.accessFlags = 0;
+        this.nameIndex = 0;
+        this.descriptorIndex = 0;
+        this.name = null;
+        this.descriptor = null;
+        this.attributes = null;
 
         try {
-            FAccessFlags = Common.readShort(Reader);
-            FNameIndex = Common.readShort(Reader);
-            FNameIndex--;
-            FDescriptorIndex = Common.readShort(Reader);
-System.err.printf("FDescriptorIndex: %04x\n", FDescriptorIndex);
-            FDescriptorIndex--;
+            accessFlags = Common.readShort(reader);
+            nameIndex = Common.readShort(reader);
+            nameIndex--;
+            descriptorIndex = Common.readShort(reader);
+System.err.printf("FDescriptorIndex: %04x\n", descriptorIndex);
+            descriptorIndex--;
             // resolve the references
-            FDescriptor = (ConstantUtf8Info) ConstantPool.getItem(FDescriptorIndex);
-            FName = (ConstantUtf8Info) ConstantPool.getItem(FNameIndex);
-            FDescriptor.references++;
-            FName.references++;
+            descriptor = (ConstantUtf8Info) constantPool.getItem(descriptorIndex);
+            name = (ConstantUtf8Info) constantPool.getItem(nameIndex);
+            descriptor.references++;
+            name.references++;
             // Attributes should be able to handle any/all attribute streams
-            FAttributes = new TAttributes(Reader, ConstantPool);
+            attributes = new Attributes(reader, constantPool);
         } catch (Exception e) {
 e.printStackTrace(System.err);
             // do nothing for now
         }
     }
 
-    public void SetName(int index, TConstantPool ConstantPool) {
-        FNameIndex = index;
-        FName = (ConstantUtf8Info) ConstantPool.getItem(FNameIndex);
-        FName.references++;
+    public void setName(int index, ConstantPool constantPool) {
+        nameIndex = index;
+        name = (ConstantUtf8Info) constantPool.getItem(nameIndex);
+        name.references++;
     }
 
     public void write(DataOutput writer) {
         try {
-            Common.writeShort(writer, FAccessFlags);
-            Common.writeShort(writer, FNameIndex + 1);
-            Common.writeShort(writer, FDescriptorIndex + 1);
+            Common.writeShort(writer, accessFlags);
+            Common.writeShort(writer, nameIndex + 1);
+            Common.writeShort(writer, descriptorIndex + 1);
 
             // Attributes should be able to handle any/all attribute streams
-            FAttributes.Write(writer);
+            attributes.write(writer);
         } catch (Exception e) {
 e.printStackTrace(System.err);
             // do nothing for now
@@ -860,15 +822,15 @@ e.printStackTrace(System.err);
     }
 
     public ConstantUtf8Info getName() {
-        return FName;
+        return name;
     }
 
     public String getDescriptor() {
-        return FDescriptor.Value;
+        return descriptor.value;
     }
 
-    public TAttributes getAttributes() {
-        return FAttributes;
+    public Attributes getAttributes() {
+        return attributes;
     }
 
     public long getOffset() {
@@ -884,63 +846,56 @@ e.printStackTrace(System.err);
     }
 
     public int getNameIndex() {
-        return FNameIndex;
+        return nameIndex;
     }
 
     public Object clone() {
         MethodInfo newMethodInfo = new MethodInfo();
-        newMethodInfo.FAccessFlags = FAccessFlags;
-        newMethodInfo.FNameIndex = FNameIndex;
-        newMethodInfo.FDescriptorIndex = FDescriptorIndex;
-        newMethodInfo.FName = FName;
-        newMethodInfo.FDescriptor = FDescriptor;
-        newMethodInfo.FAttributes = FAttributes;
+        newMethodInfo.accessFlags = accessFlags;
+        newMethodInfo.nameIndex = nameIndex;
+        newMethodInfo.descriptorIndex = descriptorIndex;
+        newMethodInfo.name = name;
+        newMethodInfo.descriptor = descriptor;
+        newMethodInfo.attributes = attributes;
         return newMethodInfo;
     }
 
-    public void SetType(int index, TConstantPool ConstantPool) {
-        FDescriptorIndex = index;
-        FDescriptor = (ConstantUtf8Info) ConstantPool.getItem(FDescriptorIndex);
-        FDescriptor.references++;
+    public void setType(int index, ConstantPool constantPool) {
+        descriptorIndex = index;
+        descriptor = (ConstantUtf8Info) constantPool.getItem(descriptorIndex);
+        descriptor.references++;
     }
 }
 
-// //
-// ATTRIBUTE STRUCTURES //
-// //
-
 abstract class AttributeInfo {
-    // int AttributeNameIndex;
-    // ConstantUtf8Info AttributeName;
-    // int AttributeLength;
-    // byte[] Bytes;
+//     int attributeNameIndex;
+//     ConstantUtf8Info attributeName;
+//     int attributeLength;
+//     byte[] bytes;
 
     public abstract void write(DataOutput writer) throws IOException;
 }
 
 class UnknownAttributeInfo extends AttributeInfo {
-    int AttributeNameIndex;
+    int attributeNameIndex;
+    ConstantUtf8Info attributeName;
+    int attributeLength;
+    byte[] bytes;
 
-    ConstantUtf8Info AttributeName;
-
-    int AttributeLength;
-
-    byte[] Bytes;
-
-    public UnknownAttributeInfo(int NameIndex, DataInput Reader, TConstantPool ConstantPool) {
-        AttributeNameIndex = 0;
-        AttributeName = null;
-        AttributeLength = 0;
-        Bytes = null;
+    public UnknownAttributeInfo(int nameIndex, DataInput reader, ConstantPool constantPool) {
+        attributeNameIndex = 0;
+        attributeName = null;
+        attributeLength = 0;
+        bytes = null;
 
         try {
-            AttributeNameIndex = NameIndex;
-            AttributeLength = Common.readInt(Reader);
-            Bytes = new byte[AttributeLength];
-            Reader.readFully(Bytes, 0, AttributeLength);
+            attributeNameIndex = nameIndex;
+            attributeLength = Common.readInt(reader);
+            bytes = new byte[attributeLength];
+            reader.readFully(bytes, 0, attributeLength);
             // resolve references
-            AttributeName = (ConstantUtf8Info) ConstantPool.getItem(AttributeNameIndex);
-            AttributeName.references++;
+            attributeName = (ConstantUtf8Info) constantPool.getItem(attributeNameIndex);
+            attributeName.references++;
         } catch (Exception e) {
 e.printStackTrace(System.err);
             // do nothing
@@ -949,118 +904,105 @@ e.printStackTrace(System.err);
 
      @Override
      public void write(DataOutput writer) throws IOException {
-        Common.writeShort(writer, AttributeNameIndex + 1);
-        Common.writeInt(writer, AttributeLength);
-        writer.write(Bytes);
+        Common.writeShort(writer, attributeNameIndex + 1);
+        Common.writeInt(writer, attributeLength);
+        writer.write(bytes);
     }
 }
 
 class ConstantValueAttributeInfo extends AttributeInfo {
-    int AttributeNameIndex;
+    int attributeNameIndex;
+    int attributeLength;
+    ConstantUtf8Info attributeName;
+    int constantValueIndex;
+    ConstantPoolVariableInfo constantValue;
 
-    int AttributeLength;
-
-    ConstantUtf8Info AttributeName;
-
-    int ConstantValueIndex;
-
-    ConstantPoolVariableInfo ConstantValue;
-
-    public ConstantValueAttributeInfo(int NameIndex, DataInput Reader, TConstantPool ConstantPool) {
-        AttributeNameIndex = 0;
-        AttributeLength = 0;
-        AttributeName = null;
-        ConstantValueIndex = 0;
-        ConstantValue = null;
+    public ConstantValueAttributeInfo(int nameIndex, DataInput reader, ConstantPool constantPool) {
+        attributeNameIndex = 0;
+        attributeLength = 0;
+        attributeName = null;
+        constantValueIndex = 0;
+        constantValue = null;
 
         try {
-            AttributeNameIndex = NameIndex;
-            AttributeLength = Common.readInt(Reader);
-            ConstantValueIndex = Common.readShort(Reader);
-            ConstantValueIndex--;
+            attributeNameIndex = nameIndex;
+            attributeLength = Common.readInt(reader);
+            constantValueIndex = Common.readShort(reader);
+            constantValueIndex--;
             // resolve references
-            AttributeName = (ConstantUtf8Info) ConstantPool.getItem(AttributeNameIndex);
-            AttributeName.references++;
-            ConstantValue = (ConstantPoolVariableInfo) ConstantPool.getItem(ConstantValueIndex);
-            ConstantValue.references++;
+            attributeName = (ConstantUtf8Info) constantPool.getItem(attributeNameIndex);
+            attributeName.references++;
+            constantValue = (ConstantPoolVariableInfo) constantPool.getItem(constantValueIndex);
+            constantValue.references++;
         } catch (Exception e) {
 e.printStackTrace(System.err);
             // do nothing
         }
     }
 
-    public @Override
-    void write(DataOutput writer) throws IOException {
-        Common.writeShort(writer, AttributeNameIndex + 1);
-        Common.writeInt(writer, AttributeLength);
-        Common.writeShort(writer, ConstantValueIndex + 1);
+    @Override
+    public void write(DataOutput writer) throws IOException {
+        Common.writeShort(writer, attributeNameIndex + 1);
+        Common.writeInt(writer, attributeLength);
+        Common.writeShort(writer, constantValueIndex + 1);
     }
 }
 
 class CodeAttributeInfo extends AttributeInfo {
     // stuff we need
-    int AttributeNameIndex;
-
-    ConstantUtf8Info AttributeName;
-
-    int AttributeLength;
-
-    int MaxStack;
-
-    int MaxLocals;
-
-    int CodeLength;
-
-    byte[] Code;
-
-    int ExceptionTableLength;
-
-    TExceptionTable[] ExceptionTable;
-
-    TAttributes Attributes;
+    int attributeNameIndex;
+    ConstantUtf8Info attributeName;
+    int attributeLength;
+    int maxStack;
+    int maxLocals;
+    int codeLength;
+    byte[] code;
+    int exceptionTableLength;
+    ExceptionTable[] exceptionTable;
+    Attributes attributes;
 
     // stuff i want
-    long FOffsetOfCode;
+    long offsetOfCode;
 
-    public CodeAttributeInfo(int NameIndex, DataInput Reader, TConstantPool ConstantPool) {
-        AttributeNameIndex = 0;
-        AttributeName = null;
-        AttributeLength = 0;
-        MaxStack = 0;
-        MaxLocals = 0;
-        CodeLength = 0;
-        Code = null;
-        ExceptionTableLength = 0;
-        ExceptionTable = null;
-        Attributes = null;
+    public CodeAttributeInfo(int nameIndex, DataInput reader, ConstantPool constantPool) {
+        attributeNameIndex = 0;
+        attributeName = null;
+        attributeLength = 0;
+        maxStack = 0;
+        maxLocals = 0;
+        codeLength = 0;
+        code = null;
+        exceptionTableLength = 0;
+        exceptionTable = null;
+        attributes = null;
 
         try {
-            AttributeNameIndex = NameIndex;
-            AttributeLength = Common.readInt(Reader);
+            attributeNameIndex = nameIndex;
+            attributeLength = Common.readInt(reader);
 
-            MaxStack = Common.readShort(Reader);
-            MaxLocals = Common.readShort(Reader);
-            CodeLength = Common.readInt(Reader);
+            maxStack = Common.readShort(reader);
+            maxLocals = Common.readShort(reader);
+            codeLength = Common.readInt(reader);
 
             // save the offset of the code stream
-            FOffsetOfCode = Common.position;
+            offsetOfCode = Common.position;
 
-            Code = new byte[CodeLength];
-            Reader.readFully(Code, 0, CodeLength);
-            Common.position += CodeLength;
+            code = new byte[codeLength];
+            reader.readFully(code, 0, codeLength);
+            Common.position += codeLength;
 
-            ExceptionTableLength = Common.readShort(Reader);
-            ExceptionTable = new TExceptionTable[ExceptionTableLength];
+            exceptionTableLength = Common.readShort(reader);
+            exceptionTable = new ExceptionTable[exceptionTableLength];
             // fucking nested arrays! ;/
-            for (int i = 0; i < ExceptionTableLength; i++) {
-                ExceptionTable[i] = new TExceptionTable(Reader, ConstantPool);
+            for (int i = 0; i < exceptionTableLength; i++) {
+                exceptionTable[i] = new ExceptionTable(reader, constantPool);
             }
 
-            Attributes = new TAttributes(Reader, ConstantPool);
+            attributes = new Attributes(reader, constantPool);
 
             // resolve references
-            AttributeName = (ConstantUtf8Info) ConstantPool.getItem(AttributeNameIndex);
-            AttributeName.references++;
+            attributeName = (ConstantUtf8Info) constantPool.getItem(attributeNameIndex);
+            attributeName.references++;
         } catch (Exception e) {
 e.printStackTrace(System.err);
             // do nothing
@@ -1069,60 +1011,55 @@ e.printStackTrace(System.err);
 
      @Override
      public void write(DataOutput writer) throws IOException {
-        Common.writeShort(writer, AttributeNameIndex + 1);
-        Common.writeInt(writer, AttributeLength);
+        Common.writeShort(writer, attributeNameIndex + 1);
+        Common.writeInt(writer, attributeLength);
 
-        Common.writeShort(writer, MaxStack);
-        Common.writeShort(writer, MaxLocals);
-        Common.writeInt(writer, CodeLength);
-        writer.write(Code);
+        Common.writeShort(writer, maxStack);
+        Common.writeShort(writer, maxLocals);
+        Common.writeInt(writer, codeLength);
+        writer.write(code);
 
-        Common.writeShort(writer, ExceptionTableLength);
+        Common.writeShort(writer, exceptionTableLength);
 
-        for (int i = 0; i < ExceptionTableLength; i++) {
-            ExceptionTable[i].write(writer);
+        for (int i = 0; i < exceptionTableLength; i++) {
+            exceptionTable[i].write(writer);
         }
 
-        Attributes.Write(writer);
+        attributes.write(writer);
     }
 
     public long getCodeOffset() {
-
-        return FOffsetOfCode;
+        return offsetOfCode;
     }
 }
 
 class ExceptionsAttributeInfo extends AttributeInfo {
-    int AttributeNameIndex;
+    int attributeNameIndex;
+    ConstantUtf8Info attributeName;
+    int attributeLength;
+    int numberOfExceptions;
+    TException[] exceptionTable;
 
-    ConstantUtf8Info AttributeName;
-
-    int AttributeLength;
-
-    int NumberOfExceptions;
-
-    TException[] ExceptionTable;
-
-    public ExceptionsAttributeInfo(int NameIndex, DataInput Reader, TConstantPool ConstantPool) {
-        AttributeNameIndex = 0;
-        AttributeName = null;
-        AttributeLength = 0;
-        NumberOfExceptions = 0;
-        ExceptionTable = null;
+    public ExceptionsAttributeInfo(int nameIndex, DataInput reader, ConstantPool constantPool) {
+        attributeNameIndex = 0;
+        attributeName = null;
+        attributeLength = 0;
+        numberOfExceptions = 0;
+        exceptionTable = null;
 
         try {
-            AttributeNameIndex = NameIndex;
-            AttributeLength = Common.readInt(Reader);
+            attributeNameIndex = nameIndex;
+            attributeLength = Common.readInt(reader);
 
-            NumberOfExceptions = Common.readShort(Reader);
-            ExceptionTable = new TException[NumberOfExceptions];
+            numberOfExceptions = Common.readShort(reader);
+            exceptionTable = new TException[numberOfExceptions];
             // fucking nested arrays! ;/
-            for (int i = 0; i < NumberOfExceptions; i++) {
-                ExceptionTable[i] = new TException(Reader, ConstantPool);
+            for (int i = 0; i < numberOfExceptions; i++) {
+                exceptionTable[i] = new TException(reader, constantPool);
             }
             // resolve references
-            AttributeName = (ConstantUtf8Info) ConstantPool.getItem(AttributeNameIndex);
-            AttributeName.references++;
+            attributeName = (ConstantUtf8Info) constantPool.getItem(attributeNameIndex);
+            attributeName.references++;
         } catch (Exception e) {
 e.printStackTrace(System.err);
             // do nothing
@@ -1131,48 +1068,44 @@ e.printStackTrace(System.err);
 
      @Override
      public void write(DataOutput writer) throws IOException {
-        Common.writeShort(writer, AttributeNameIndex + 1);
-        Common.writeInt(writer, AttributeLength);
+        Common.writeShort(writer, attributeNameIndex + 1);
+        Common.writeInt(writer, attributeLength);
 
-        Common.writeShort(writer, NumberOfExceptions);
+        Common.writeShort(writer, numberOfExceptions);
 
-        for (int i = 0; i < NumberOfExceptions; i++) {
-            ExceptionTable[i].write(writer);
+        for (int i = 0; i < numberOfExceptions; i++) {
+            exceptionTable[i].write(writer);
         }
     }
 }
 
 class InnerClassesAttributeInfo extends AttributeInfo {
-    int AttributeNameIndex;
+    int attributeNameIndex;
+    ConstantUtf8Info attributeName;
+    int attributeLength;
+    int numberOfClasses;
+    TClasses[] classes;
 
-    ConstantUtf8Info AttributeName;
-
-    int AttributeLength;
-
-    int NumberOfClasses;
-
-    TClasses[] Classes;
-
-    public InnerClassesAttributeInfo(int NameIndex, DataInput Reader, TConstantPool ConstantPool) {
-        AttributeNameIndex = 0;
-        AttributeName = null;
-        AttributeLength = 0;
-        NumberOfClasses = 0;
-        Classes = null;
+    public InnerClassesAttributeInfo(int nameIndex, DataInput reader, ConstantPool constantPool) {
+        attributeNameIndex = 0;
+        attributeName = null;
+        attributeLength = 0;
+        numberOfClasses = 0;
+        classes = null;
 
         try {
-            AttributeNameIndex = NameIndex;
-            AttributeLength = Common.readInt(Reader);
+            attributeNameIndex = nameIndex;
+            attributeLength = Common.readInt(reader);
 
-            NumberOfClasses = Common.readShort(Reader);
-            Classes = new TClasses[NumberOfClasses];
+            numberOfClasses = Common.readShort(reader);
+            classes = new TClasses[numberOfClasses];
             // fucking nested arrays! ;/
-            for (int i = 0; i < NumberOfClasses; i++) {
-                Classes[i] = new TClasses(Reader, ConstantPool);
+            for (int i = 0; i < numberOfClasses; i++) {
+                classes[i] = new TClasses(reader, constantPool);
             }
             // resolve references
-            AttributeName = (ConstantUtf8Info) ConstantPool.getItem(AttributeNameIndex);
-            AttributeName.references++;
+            attributeName = (ConstantUtf8Info) constantPool.getItem(attributeNameIndex);
+            attributeName.references++;
         } catch (Exception e) {
 e.printStackTrace(System.err);
             // do nothing
@@ -1181,35 +1114,33 @@ e.printStackTrace(System.err);
 
      @Override
      public void write(DataOutput writer) throws IOException {
-        Common.writeShort(writer, AttributeNameIndex + 1);
-        Common.writeInt(writer, AttributeLength);
+        Common.writeShort(writer, attributeNameIndex + 1);
+        Common.writeInt(writer, attributeLength);
 
-        Common.writeShort(writer, NumberOfClasses);
-        for (int i = 0; i < NumberOfClasses; i++) {
-            Classes[i].write(writer);
+        Common.writeShort(writer, numberOfClasses);
+        for (int i = 0; i < numberOfClasses; i++) {
+            classes[i].write(writer);
         }
     }
 }
 
 class SyntheticAttributeInfo extends AttributeInfo {
-    int AttributeNameIndex;
+    int attributeNameIndex;
+    ConstantUtf8Info attributeName;
+    int attributeLength;
 
-    ConstantUtf8Info AttributeName;
-
-    int AttributeLength;
-
-    public SyntheticAttributeInfo(int NameIndex, DataInput Reader, TConstantPool ConstantPool) {
-        AttributeNameIndex = 0;
-        AttributeName = null;
-        AttributeLength = 0;
+    public SyntheticAttributeInfo(int nameIndex, DataInput reader, ConstantPool constantPool) {
+        attributeNameIndex = 0;
+        attributeName = null;
+        attributeLength = 0;
 
         try {
-            AttributeNameIndex = NameIndex;
-            AttributeLength = Common.readInt(Reader);
+            attributeNameIndex = nameIndex;
+            attributeLength = Common.readInt(reader);
 
             // resolve references
-            AttributeName = (ConstantUtf8Info) ConstantPool.getItem(AttributeNameIndex);
-            AttributeName.references++;
+            attributeName = (ConstantUtf8Info) constantPool.getItem(attributeNameIndex);
+            attributeName.references++;
         } catch (Exception e) {
 e.printStackTrace(System.err);
             // do nothing
@@ -1218,39 +1149,35 @@ e.printStackTrace(System.err);
 
     @Override
     public void write(DataOutput writer) throws IOException {
-        Common.writeShort(writer, AttributeNameIndex + 1);
-        Common.writeInt(writer, AttributeLength);
+        Common.writeShort(writer, attributeNameIndex + 1);
+        Common.writeInt(writer, attributeLength);
     }
 }
 
 class SourceFileAttributeInfo extends AttributeInfo {
-    int AttributeNameIndex;
+    int attributeNameIndex;
+    ConstantUtf8Info attributeName;
+    int attributeLength;
+    int sourceFileIndex;
+    ConstantUtf8Info sourceFile;
 
-    ConstantUtf8Info AttributeName;
-
-    int AttributeLength;
-
-    int SourceFileIndex;
-
-    ConstantUtf8Info SourceFile;
-
-    public SourceFileAttributeInfo(int NameIndex, DataInput Reader, TConstantPool ConstantPool) {
-        AttributeNameIndex = 0;
-        AttributeName = null;
-        AttributeLength = 0;
-        SourceFileIndex = 0;
-        SourceFile = null;
+    public SourceFileAttributeInfo(int nameIndex, DataInput reader, ConstantPool constantPool) {
+        attributeNameIndex = 0;
+        attributeName = null;
+        attributeLength = 0;
+        sourceFileIndex = 0;
+        sourceFile = null;
 
         try {
-            AttributeNameIndex = NameIndex;
-            AttributeLength = Common.readInt(Reader);
-            SourceFileIndex = Common.readShort(Reader);
-            SourceFileIndex--;
+            attributeNameIndex = nameIndex;
+            attributeLength = Common.readInt(reader);
+            sourceFileIndex = Common.readShort(reader);
+            sourceFileIndex--;
             // resolve references
-            AttributeName = (ConstantUtf8Info) ConstantPool.getItem(AttributeNameIndex);
-            AttributeName.references++;
-            SourceFile = (ConstantUtf8Info) ConstantPool.getItem(AttributeNameIndex);
-            SourceFile.references++;
+            attributeName = (ConstantUtf8Info) constantPool.getItem(attributeNameIndex);
+            attributeName.references++;
+            sourceFile = (ConstantUtf8Info) constantPool.getItem(attributeNameIndex);
+            sourceFile.references++;
         } catch (Exception e) {
 e.printStackTrace(System.err);
             // do nothing
@@ -1259,51 +1186,46 @@ e.printStackTrace(System.err);
 
     @Override
     public void write(DataOutput writer) throws IOException {
-        Common.writeShort(writer, AttributeNameIndex + 1);
-        Common.writeInt(writer, AttributeLength);
-        Common.writeShort(writer, SourceFileIndex + 1);
+        Common.writeShort(writer, attributeNameIndex + 1);
+        Common.writeInt(writer, attributeLength);
+        Common.writeShort(writer, sourceFileIndex + 1);
     }
 }
 
 class LineNumberAttributeInfo extends AttributeInfo {
-    int AttributeNameIndex;
+    int attributeNameIndex;
+    ConstantUtf8Info attributeName;
+    int attributeLength;
+    int lineNumberTableLength;
+    TLineNumberTable[] lineNumberTable;
+    long originalPos;
 
-    ConstantUtf8Info AttributeName;
-
-    int AttributeLength;
-
-    int LineNumberTableLength;
-
-    TLineNumberTable[] LineNumberTable;
-
-    long OriginalPos;
-
-    public LineNumberAttributeInfo(int NameIndex, DataInput Reader, TConstantPool ConstantPool) {
-        AttributeNameIndex = 0;
-        AttributeName = null;
-        AttributeLength = 0;
-        LineNumberTableLength = 0;
-        LineNumberTable = null;
-        OriginalPos = 0;
+    public LineNumberAttributeInfo(int nameIndex, DataInput reader, ConstantPool constantPool) {
+        attributeNameIndex = 0;
+        attributeName = null;
+        attributeLength = 0;
+        lineNumberTableLength = 0;
+        lineNumberTable = null;
+        originalPos = 0;
 
         try {
-            AttributeNameIndex = NameIndex;
-            AttributeLength = Common.readInt(Reader);
-            OriginalPos = Common.position;
-System.err.printf("originalPos: %d\n", OriginalPos);
-            LineNumberTableLength = Common.readShort(Reader);
-            LineNumberTable = new TLineNumberTable[LineNumberTableLength];
+            attributeNameIndex = nameIndex;
+            attributeLength = Common.readInt(reader);
+            originalPos = Common.position;
+System.err.printf("originalPos: %d\n", originalPos);
+            lineNumberTableLength = Common.readShort(reader);
+            lineNumberTable = new TLineNumberTable[lineNumberTableLength];
             // fucking nested arrays! ;/
-            for (int i = 0; i < LineNumberTableLength; i++) {
-                LineNumberTable[i] = new TLineNumberTable(Reader);
+            for (int i = 0; i < lineNumberTableLength; i++) {
+                lineNumberTable[i] = new TLineNumberTable(reader);
             }
             // resolve references
-            AttributeName = (ConstantUtf8Info) ConstantPool.getItem(AttributeNameIndex);
-            AttributeName.references++;
+            attributeName = (ConstantUtf8Info) constantPool.getItem(attributeNameIndex);
+            attributeName.references++;
 
 System.err.printf("Common.position: 1: %d\n", Common.position);
-            Common.position = OriginalPos + AttributeLength;
-System.err.printf("Common.position: 2: %d\n", OriginalPos + AttributeLength);
+            Common.position = originalPos + attributeLength;
+System.err.printf("Common.position: 2: %d\n", originalPos + attributeLength);
         } catch (Exception e) {
             // do nothing
 e.printStackTrace(System.err);
@@ -1312,47 +1234,43 @@ e.printStackTrace(System.err);
 
     @Override
     public void write(DataOutput writer) throws IOException {
-        Common.writeShort(writer, AttributeNameIndex + 1);
-        Common.writeInt(writer, AttributeLength);
+        Common.writeShort(writer, attributeNameIndex + 1);
+        Common.writeInt(writer, attributeLength);
 
-        Common.writeShort(writer, LineNumberTableLength);
-        for (int i = 0; i < LineNumberTableLength; i++) {
-            LineNumberTable[i].write(writer);
+        Common.writeShort(writer, lineNumberTableLength);
+        for (int i = 0; i < lineNumberTableLength; i++) {
+            lineNumberTable[i].write(writer);
         }
     }
 }
 
 class LocalVariablesAttributeInfo extends AttributeInfo {
-    int AttributeNameIndex;
+    int attributeNameIndex;
+    ConstantUtf8Info attributeName;
+    int attributeLength;
+    int localVariableTableLength;
+    TLocalVariableTable[] localVariableTable;
 
-    ConstantUtf8Info AttributeName;
-
-    int AttributeLength;
-
-    int LocalVariableTableLength;
-
-    TLocalVariableTable[] LocalVariableTable;
-
-    public LocalVariablesAttributeInfo(int NameIndex, DataInput Reader, TConstantPool ConstantPool) {
-        AttributeNameIndex = 0;
-        AttributeName = null;
-        AttributeLength = 0;
-        LocalVariableTableLength = 0;
-        LocalVariableTable = null;
+    public LocalVariablesAttributeInfo(int nameIndex, DataInput reader, ConstantPool constantPool) {
+        attributeNameIndex = 0;
+        attributeName = null;
+        attributeLength = 0;
+        localVariableTableLength = 0;
+        localVariableTable = null;
 
         try {
-            AttributeNameIndex = NameIndex;
-            AttributeLength = Common.readInt(Reader);
+            attributeNameIndex = nameIndex;
+            attributeLength = Common.readInt(reader);
 
-            LocalVariableTableLength = Common.readShort(Reader);
-            LocalVariableTable = new TLocalVariableTable[LocalVariableTableLength];
+            localVariableTableLength = Common.readShort(reader);
+            localVariableTable = new TLocalVariableTable[localVariableTableLength];
             // fucking nested arrays! ;/
-            for (int i = 0; i < LocalVariableTableLength; i++) {
-                LocalVariableTable[i] = new TLocalVariableTable(Reader, ConstantPool);
+            for (int i = 0; i < localVariableTableLength; i++) {
+                localVariableTable[i] = new TLocalVariableTable(reader, constantPool);
             }
             // resolve references
-            AttributeName = (ConstantUtf8Info) ConstantPool.getItem(AttributeNameIndex);
-            AttributeName.references++;
+            attributeName = (ConstantUtf8Info) constantPool.getItem(attributeNameIndex);
+            attributeName.references++;
         } catch (Exception e) {
 e.printStackTrace(System.err);
             // do nothing
@@ -1361,37 +1279,35 @@ e.printStackTrace(System.err);
 
     @Override
     public void write(DataOutput writer) throws IOException {
-        Common.writeShort(writer, AttributeNameIndex + 1);
-        Common.writeInt(writer, AttributeLength);
+        Common.writeShort(writer, attributeNameIndex + 1);
+        Common.writeInt(writer, attributeLength);
 
-        Common.writeShort(writer, LocalVariableTableLength);
-        for (int i = 0; i < LocalVariableTableLength; i++) {
-            LocalVariableTable[i].write(writer);
+        Common.writeShort(writer, localVariableTableLength);
+        for (int i = 0; i < localVariableTableLength; i++) {
+            localVariableTable[i].write(writer);
         }
     }
 }
 
 class DeprecatedAttributeInfo extends AttributeInfo {
-    int AttributeNameIndex;
+    int attributeNameIndex;
+    ConstantUtf8Info attributeName;
+    int attributeLength;
 
-    ConstantUtf8Info AttributeName;
-
-    int AttributeLength;
-
-    public DeprecatedAttributeInfo(int NameIndex, DataInput Reader, TConstantPool ConstantPool) {
-        AttributeNameIndex = 0;
-        AttributeName = null;
-        AttributeLength = 0;
+    public DeprecatedAttributeInfo(int nameIndex, DataInput reader, ConstantPool constantPool) {
+        attributeNameIndex = 0;
+        attributeName = null;
+        attributeLength = 0;
 
         try {
-            AttributeNameIndex = NameIndex;
+            attributeNameIndex = nameIndex;
             // length should be zero..
             // TODO: maybe put a check in?? probably no need at thinstanceof
             // point..
-            AttributeLength = Common.readInt(Reader);
+            attributeLength = Common.readInt(reader);
             // resolve references
-            AttributeName = (ConstantUtf8Info) ConstantPool.getItem(AttributeNameIndex);
-            AttributeName.references++;
+            attributeName = (ConstantUtf8Info) constantPool.getItem(attributeNameIndex);
+            attributeName.references++;
         } catch (Exception e) {
 e.printStackTrace(System.err);
             // do nothing
@@ -1400,51 +1316,45 @@ e.printStackTrace(System.err);
 
      @Override
      public void write(DataOutput writer) throws IOException {
-        Common.writeShort(writer, AttributeNameIndex + 1);
-        Common.writeInt(writer, AttributeLength);
+        Common.writeShort(writer, attributeNameIndex + 1);
+        Common.writeInt(writer, attributeLength);
     }
 }
 
 // the inner attribute classes
 class TLocalVariableTable {
-    int StartPC;
-
-    int Length;
-
-    int NameIndex;
-
-    ConstantUtf8Info Name;
-
-    int DescriptorIndex;
-
-    ConstantUtf8Info Descriptor;
-
+    int startPC;
+    int length;
+    int nameIndex;
+    ConstantUtf8Info name;
+    int descriptorIndex;
+    ConstantUtf8Info descriptor;
     int Index;
 
-    public TLocalVariableTable(DataInput Reader, TConstantPool ConstantPool) {
-        StartPC = 0;
-        Length = 0;
-        NameIndex = 0;
-        Name = null;
-        DescriptorIndex = 0;
-        Descriptor = null;
+    public TLocalVariableTable(DataInput reader, ConstantPool constantPool) {
+        startPC = 0;
+        length = 0;
+        nameIndex = 0;
+        name = null;
+        descriptorIndex = 0;
+        descriptor = null;
         Index = 0;
 
         try {
-            StartPC = Common.readShort(Reader);
-            StartPC--;
-            Length = Common.readShort(Reader);
-            NameIndex = Common.readShort(Reader);
-            NameIndex--;
-            DescriptorIndex = Common.readShort(Reader);
-            DescriptorIndex--;
-            Index = Common.readShort(Reader);
+            startPC = Common.readShort(reader);
+            startPC--;
+            length = Common.readShort(reader);
+            nameIndex = Common.readShort(reader);
+            nameIndex--;
+            descriptorIndex = Common.readShort(reader);
+            descriptorIndex--;
+            Index = Common.readShort(reader);
             Index--;
             // resolve references
-            Name = (ConstantUtf8Info) ConstantPool.getItem(NameIndex);
-            Name.references++;
-            Descriptor = (ConstantUtf8Info) ConstantPool.getItem(DescriptorIndex);
-            Descriptor.references++;
+            name = (ConstantUtf8Info) constantPool.getItem(nameIndex);
+            name.references++;
+            descriptor = (ConstantUtf8Info) constantPool.getItem(descriptorIndex);
+            descriptor.references++;
         } catch (Exception e) {
 e.printStackTrace(System.err);
             // do nothing
@@ -1452,26 +1362,25 @@ e.printStackTrace(System.err);
     }
 
     public void write(DataOutput writer) throws IOException {
-        Common.writeShort(writer, StartPC);
-        Common.writeShort(writer, Length);
-        Common.writeShort(writer, NameIndex + 1);
-        Common.writeShort(writer, DescriptorIndex + 1);
+        Common.writeShort(writer, startPC);
+        Common.writeShort(writer, length);
+        Common.writeShort(writer, nameIndex + 1);
+        Common.writeShort(writer, descriptorIndex + 1);
         Common.writeShort(writer, Index + 1);
     }
 }
 
 class TLineNumberTable {
-    int StartPC;
+    int startPC;
+    int lineNumber;
 
-    int LineNumber;
-
-    public TLineNumberTable(DataInput Reader) {
-        LineNumber = 0;
-        StartPC = 0;
+    public TLineNumberTable(DataInput reader) {
+        lineNumber = 0;
+        startPC = 0;
 
         try {
-            StartPC = Common.readShort(Reader);
-            LineNumber = Common.readShort(Reader);
+            startPC = Common.readShort(reader);
+            lineNumber = Common.readShort(reader);
         } catch (Exception e) {
 e.printStackTrace(System.err);
             // do nothing
@@ -1479,27 +1388,21 @@ e.printStackTrace(System.err);
     }
 
     public void write(DataOutput writer) throws IOException {
-        Common.writeShort(writer, StartPC);
-        Common.writeShort(writer, LineNumber);
+        Common.writeShort(writer, startPC);
+        Common.writeShort(writer, lineNumber);
     }
 }
 
 class TClasses {
     int innerClassInfoIndex;
-
     ConstantClassInfo innerClassInfo;
-
     int outerClassInfoIndex;
-
     ConstantClassInfo outerClassInfo;
-
     int innerNameIndex;
-
     ConstantUtf8Info innerName;
-
     int innerClassAccessFlags;
 
-    public TClasses(DataInput Reader, TConstantPool ConstantPool) {
+    public TClasses(DataInput reader, ConstantPool constantPool) {
         innerClassInfoIndex = 0;
         innerClassInfo = null;
         outerClassInfoIndex = 0;
@@ -1512,25 +1415,25 @@ class TClasses {
 
 
         try {
-            innerClassInfoIndex = Common.readShort(Reader);
+            innerClassInfoIndex = Common.readShort(reader);
             innerClassInfoIndex--;
-            outerClassInfoIndex = Common.readShort(Reader);
+            outerClassInfoIndex = Common.readShort(reader);
             outerClassInfoIndex--;
-            innerNameIndex = Common.readShort(Reader);
+            innerNameIndex = Common.readShort(reader);
             innerNameIndex--;
-            innerClassAccessFlags = Common.readShort(Reader);
+            innerClassAccessFlags = Common.readShort(reader);
 
             // resolve references
             if (innerNameIndex >= 0) {
-                innerName = (ConstantUtf8Info) ConstantPool.getItem(innerNameIndex);
+                innerName = (ConstantUtf8Info) constantPool.getItem(innerNameIndex);
                 innerName.references++;
             }
             if (innerNameIndex >= 0) {
-                innerClassInfo = (ConstantClassInfo) ConstantPool.getItem(innerClassInfoIndex);
+                innerClassInfo = (ConstantClassInfo) constantPool.getItem(innerClassInfoIndex);
                 innerClassInfo.references++;
             }
             if (innerNameIndex >= 0) {
-                outerClassInfo = (ConstantClassInfo) ConstantPool.getItem(outerClassInfoIndex);
+                outerClassInfo = (ConstantClassInfo) constantPool.getItem(outerClassInfoIndex);
                 outerClassInfo.references++;
             }
         } catch (Exception e) {
@@ -1548,18 +1451,18 @@ e.printStackTrace(System.err);
 }
 
 class TException {
-    int ExceptionIndex;
+    int exceptionIndex;
 
     ConstantClassInfo Exception;
 
-    public TException(DataInput Reader, TConstantPool ConstantPool) {
-        ExceptionIndex = 0;
+    public TException(DataInput reader, ConstantPool constantPool) {
+        exceptionIndex = 0;
 
         try {
-            ExceptionIndex = Common.readShort(Reader);
-            ExceptionIndex--;
+            exceptionIndex = Common.readShort(reader);
+            exceptionIndex--;
             // resolve references
-            Exception = (ConstantClassInfo) ConstantPool.getItem(ExceptionIndex);
+            Exception = (ConstantClassInfo) constantPool.getItem(exceptionIndex);
         } catch (Exception e) {
 e.printStackTrace(System.err);
             Exception = null;
@@ -1567,40 +1470,37 @@ e.printStackTrace(System.err);
     }
 
     public void write(DataOutput writer) throws IOException {
-        Common.writeShort(writer, ExceptionIndex + 1);
+        Common.writeShort(writer, exceptionIndex + 1);
     }
 }
 
-class TExceptionTable {
-    int StartPC;
+class ExceptionTable {
+    int startPC;
+    int endPC;
+    int handlerPC;
+    int catchType;
 
-    int EndPC;
+    ConstantClassInfo catch_;
 
-    int HandlerPC;
-
-    int CatchType;
-
-    ConstantClassInfo Catch;
-
-    public TExceptionTable(DataInput Reader, TConstantPool ConstantPool) {
-        StartPC = 0;
-        EndPC = 0;
-        HandlerPC = 0;
-        CatchType = 0;
-        Catch = null;
+    public ExceptionTable(DataInput reader, ConstantPool constantPool) {
+        startPC = 0;
+        endPC = 0;
+        handlerPC = 0;
+        catchType = 0;
+        catch_ = null;
 
         try {
-            StartPC = Common.readShort(Reader);
-            StartPC--;
-            EndPC = Common.readShort(Reader);
-            EndPC--;
-            HandlerPC = Common.readShort(Reader);
-            HandlerPC--;
-            CatchType = Common.readShort(Reader);
-            CatchType--;
+            startPC = Common.readShort(reader);
+            startPC--;
+            endPC = Common.readShort(reader);
+            endPC--;
+            handlerPC = Common.readShort(reader);
+            handlerPC--;
+            catchType = Common.readShort(reader);
+            catchType--;
 
-            if (CatchType >= 0) {
-                Catch = (ConstantClassInfo) ConstantPool.getItem(CatchType);
+            if (catchType >= 0) {
+                catch_ = (ConstantClassInfo) constantPool.getItem(catchType);
             }
         } catch (Exception e) {
 e.printStackTrace(System.err);
@@ -1608,10 +1508,10 @@ e.printStackTrace(System.err);
     }
 
     public void write(DataOutput writer) throws IOException {
-        Common.writeShort(writer, StartPC + 1);
-        Common.writeShort(writer, EndPC + 1);
-        Common.writeShort(writer, HandlerPC + 1);
-        Common.writeShort(writer, CatchType + 1);
+        Common.writeShort(writer, startPC + 1);
+        Common.writeShort(writer, endPC + 1);
+        Common.writeShort(writer, handlerPC + 1);
+        Common.writeShort(writer, catchType + 1);
     }
 }
 
@@ -1620,47 +1520,46 @@ e.printStackTrace(System.err);
 // //
 
 class InterfaceInfo {
-    private int FValue;
+    private int value;
+    private ConstantClassInfo interface_;
 
-    private ConstantClassInfo FInterface;
-
-    public InterfaceInfo(DataInput Reader, TConstantPool ConstantPool) {
+    public InterfaceInfo(DataInput Reader, ConstantPool ConstantPool) {
         try {
-            FValue = Common.readShort(Reader);
-            FValue--;
+            value = Common.readShort(Reader);
+            value--;
 
-            FInterface = (ConstantClassInfo) ConstantPool.getItem(FValue);
+            interface_ = (ConstantClassInfo) ConstantPool.getItem(value);
         } catch (Exception e) {
 e.printStackTrace(System.err);
-            FValue = 0;
-            FInterface = null;
+            value = 0;
+            interface_ = null;
         }
     }
 
     public void write(DataOutput writer) {
         try {
-            Common.writeShort(writer, FValue + 1);
+            Common.writeShort(writer, value + 1);
         } catch (Exception e) {
         }
     }
 
     public int getValue() {
-        return FValue;
+        return value;
     }
 
     public ConstantClassInfo getInterface() {
-        return FInterface;
+        return interface_;
     }
 
     public String getName() {
-        if (FInterface != null) {
-            return FInterface.Name;
+        if (interface_ != null) {
+            return interface_.name;
         }
 
         return "";
     }
 
-    public void SetName(String NewName) {
+    public void setName(String newName) {
 
     }
 }
@@ -1670,78 +1569,75 @@ e.printStackTrace(System.err);
 // //
 
 class RenameData {
-    String FType;
-
-    String FName;
+    String type;
+    String name;
 
     public RenameData(String Type, String Name) {
-        FType = Type;
-        FName = Name;
+        type = Type;
+        name = Name;
     }
 
-    public String[] GetData() {
+    public String[] getData() {
         String[] s = new String[2];
-        s[0] = FType;
-        s[1] = FName;
+        s[0] = type;
+        s[1] = name;
 
         return s;
     }
 
     public String getFieldType() {
-        return FType;
+        return type;
     }
 
     public void setFieldType(String value) {
-        FType = value;
+        type = value;
     }
 
     public String getFieldName() {
-        return FName;
+        return name;
     }
 
     public void setFieldName(String value) {
-        FName = value;
+        name = value;
     }
 }
 
 class RenameDatabase {
-    private Hashtable<String, ArrayList<RenameData>> FRenameMethods = null;
-
-    private Hashtable<String, ArrayList<RenameData>> FRenameFields = null;
-
-    private Hashtable<String, String> FRenameClass = null;
+    private Map<String, List<RenameData>> renameMethods = null;
+    private Map<String, List<RenameData>> renameFields = null;
+    private Map<String, String> renameClass = null;
 
     public RenameDatabase() {
-        FRenameMethods = new Hashtable<String, ArrayList<RenameData>>();
-        FRenameFields = new Hashtable<String, ArrayList<RenameData>>();
-        FRenameClass = new Hashtable<String, String>();
+        renameMethods = new HashMap<String, List<RenameData>>();
+        renameFields = new HashMap<String, List<RenameData>>();
+        renameClass = new HashMap<String, String>();
     }
 
-    public void AddRename(Hashtable<String, ArrayList<RenameData>> DestTable, String ClassName, String OldDescriptor, String OldName, String NewDescriptor, String NewName) {
-        ArrayList<RenameData> al = DestTable.get(ClassName);
+    public void addRename(Map<String, List<RenameData>> destTable, String className, String oldDescriptor, String oldName, String newDescriptor, String newName) {
+        List<RenameData> al = destTable.get(className);
 
         if (al == null) {
             al = new ArrayList<RenameData>();
-            DestTable.put(ClassName, al);
+            destTable.put(className, al);
         } else {
             // make sure it doesnt already exist
             for (int i = 0; i < al.size(); i += 2) {
                 RenameData rd = al.get(i);
 
-                if (rd.getFieldName() == OldName && rd.getFieldType() == OldDescriptor) {
+                if (rd.getFieldName() == oldName && rd.getFieldType() == oldDescriptor) {
                     // if it does, overwrite it, don't add in a new one
-                    rd.setFieldName(NewName);
+                    rd.setFieldName(newName);
                     return;
                 }
             }
         }
 
-        al.add(new RenameData(OldDescriptor, OldName));
-        al.add(new RenameData(NewDescriptor, NewName));
+        al.add(new RenameData(oldDescriptor, oldName));
+        al.add(new RenameData(newDescriptor, newName));
     }
 
-    public RenameData GetRenameInfo(Hashtable<String, ArrayList<RenameData>> DestTable, String ClassName, String OldDescriptor, String OldName) {
-        ArrayList<RenameData> al = DestTable.get(ClassName);
+    public RenameData getRenameInfo(Map<String, List<RenameData>> destTable, String className, String oldDescriptor, String oldName) {
+        List<RenameData> al = destTable.get(className);
 
         if (al == null)
             return null;
@@ -1749,7 +1645,7 @@ class RenameDatabase {
         for (int i = 0; i < al.size(); i += 2) {
             RenameData rd = al.get(i);
 
-            if (rd.getFieldName() == OldName && rd.getFieldType() == OldDescriptor) {
+            if (rd.getFieldName() == oldName && rd.getFieldType() == oldDescriptor) {
                 return al.get(i + 1);
             }
         }
@@ -1757,34 +1653,34 @@ class RenameDatabase {
         return null;
     }
 
-    public void AddRenameMethod(String ClassName, String OldDescriptor, String OldName, String NewDescriptor, String NewName) {
-        AddRename(FRenameMethods, ClassName, OldDescriptor, OldName, NewDescriptor, NewName);
+    public void addRenameMethod(String className, String oldDescriptor, String oldName, String newDescriptor, String newName) {
+        addRename(renameMethods, className, oldDescriptor, oldName, newDescriptor, newName);
     }
 
-    public void AddRenameField(String ClassName, String OldDescriptor, String OldName, String NewDescriptor, String NewName) {
-        AddRename(FRenameFields, ClassName, OldDescriptor, OldName, NewDescriptor, NewName);
+    public void addRenameField(String className, String oldDescriptor, String oldName, String newDescriptor, String newName) {
+        addRename(renameFields, className, oldDescriptor, oldName, newDescriptor, newName);
     }
 
-    public RenameData GetNewMethodInfo(String ClassName, String OldDescriptor, String OldName) {
+    public RenameData getNewMethodInfo(String className, String oldDescriptor, String oldName) {
         // searches for a matching method in the methodlist
-        return GetRenameInfo(FRenameMethods, ClassName, OldDescriptor, OldName);
+        return getRenameInfo(renameMethods, className, oldDescriptor, oldName);
     }
 
-    public RenameData GetNewFieldInfo(String ClassName, String OldDescriptor, String OldName) {
+    public RenameData getNewFieldInfo(String className, String oldDescriptor, String oldName) {
         // searches for a matching method in the methodlist
-        return GetRenameInfo(FRenameFields, ClassName, OldDescriptor, OldName);
+        return getRenameInfo(renameFields, className, oldDescriptor, oldName);
     }
 
-    public void AddRenameClass(String OldClassName, String NewClassName) {
-        FRenameClass.put(OldClassName, NewClassName);
+    public void addRenameClass(String oldClassName, String newClassName) {
+        renameClass.put(oldClassName, newClassName);
     }
 
-    public String GetNewClassName(String OldClassName) {
-        return FRenameClass.get(OldClassName);
+    public String getNewClassName(String oldClassName) {
+        return renameClass.get(oldClassName);
     }
 
-    public String GetNewClassNameOnly(String OldClassName) {
-        String temp = GetNewClassName(OldClassName);
+    public String getNewClassNameOnly(String oldClassName) {
+        String temp = getNewClassName(oldClassName);
 
         if (temp == null)
             return null;
@@ -1808,38 +1704,38 @@ class RenameDatabase {
 class Common {
     static long position = 0;
 
-    public static String GetClassName(String FullName) {
+    public static String getClassName(String fullName) {
         // gets the class name from a class path
-        if (FullName.indexOf("/") > 0)
-            return FullName.substring(FullName.lastIndexOf('/') + 1, FullName.length() - FullName.lastIndexOf('/') - 1);
+        if (fullName.indexOf("/") > 0)
+            return fullName.substring(fullName.lastIndexOf('/') + 1, fullName.length() - fullName.lastIndexOf('/') - 1);
         else
-            return FullName;
+            return fullName;
     }
 
-    public static String GetClassPath(String FullName) {
+    public static String getClassPath(String FullName) {
         // gets the class name from a class path
         return FullName.substring(0, FullName.lastIndexOf('/') + 1);
     }
 
-    public static String NewClassName(String OriginalClassName, String NewName) {
-        NewName = Common.GetClassName(NewName);
+    public static String newClassName(String originalClassName, String newName) {
+        newName = Common.getClassName(newName);
         // new name should be the short name
         // original class name should be original long name
-        if (OriginalClassName.lastIndexOf('/') > 0) {
+        if (originalClassName.lastIndexOf('/') > 0) {
 //            String old_name = OriginalClassName.Substring(OriginalClassName.lastIndexOf('/') + 1, OriginalClassName.length() - OriginalClassName.lastIndexOf('/') - 1);
-            OriginalClassName = OriginalClassName.substring(0, OriginalClassName.lastIndexOf('/')) + OriginalClassName.substring(OriginalClassName.length() - OriginalClassName.lastIndexOf('/'));
+            originalClassName = originalClassName.substring(0, originalClassName.lastIndexOf('/')) + originalClassName.substring(originalClassName.length() - originalClassName.lastIndexOf('/'));
 //            OriginalClassName += NewName + old_name;
-            OriginalClassName += NewName;
+            originalClassName += newName;
 
-            return OriginalClassName;
+            return originalClassName;
         }
 
         // return NewName + OriginalClassName;
-        return NewName;
+        return newName;
     }
 
-    public static String FixDescriptor(String Descriptor, String OldClassName, String NewClassName) {
-        return Descriptor.replace("L" + OldClassName + ";", "L" + NewClassName + ";");
+    public static String FixDescriptor(String descriptor, String oldClassName, String newClassName) {
+        return descriptor.replace("L" + oldClassName + ";", "L" + newClassName + ";");
     }
 
 //    private static int SwapBytes(int value) {
@@ -1861,7 +1757,7 @@ class Common {
         return val;
     }
 
-    public static void writeShort(DataOutput writer, int Data) throws IOException {
+    public static void writeShort(DataOutput writer, int data) throws IOException {
         if (writer == null) {
             return;
         }
@@ -1869,17 +1765,17 @@ class Common {
         // convert the data from small endian to big endian
 //        Data = SwapBytes(Data);
 
-        writer.writeShort(Data);
+        writer.writeShort(data);
         position += 2;
     }
 
-    public static int readInt(DataInput Reader) throws IOException {
-        if (Reader == null) {
+    public static int readInt(DataInput reader) throws IOException {
+        if (reader == null) {
             return 0;
         }
 
         // get the value, and then change it from big endian to small endian
-        int val = Reader.readInt();
+        int val = reader.readInt();
         position += 4;
 //        int temp = val >>> 16;
 //        temp = SwapBytes(temp);
@@ -1890,7 +1786,7 @@ class Common {
         return val;
     }
 
-    public static void writeInt(DataOutput writer, int Data) throws IOException {
+    public static void writeInt(DataOutput writer, int data) throws IOException {
         if (writer == null) {
             return;
         }
@@ -1902,25 +1798,25 @@ class Common {
 //        Data = SwapBytes(Data);
 //        Data = (Data << 16) | temp;
 
-        writer.writeInt(Data);
+        writer.writeInt(data);
         position += 4;
     }
 
-    public static int readByte(DataInput Reader) throws IOException {
-        if (Reader == null) {
+    public static int readByte(DataInput reader) throws IOException {
+        if (reader == null) {
             return 0;
         }
 
         position += 1;
-        return Reader.readUnsignedByte();
+        return reader.readUnsignedByte();
     }
 
-    public static void writeByte(DataOutput writer, int Data) throws IOException {
+    public static void writeByte(DataOutput writer, int data) throws IOException {
         if (writer == null) {
             return;
         }
 
-        writer.writeByte(Data);
+        writer.writeByte(data);
         position += 1;
     }
 }
