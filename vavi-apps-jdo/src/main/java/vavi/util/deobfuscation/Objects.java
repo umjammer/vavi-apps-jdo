@@ -170,7 +170,7 @@ class DeObfuscator {
                 }
 
                 // change the method name
-                classFile.ChangeMethodName(i, newName);
+                classFile.changeMethodName(i, newName);
                 // set the
                 mcr.changedTo(mi);
                 changeList.add(mcr);
@@ -209,9 +209,9 @@ class DeObfuscator {
                     newName = rd.getFieldName();
                 }
 
-                classFile.ChangeFieldName(i, newName);
+                classFile.changeFieldName(i, newName);
 
-                fcr.ChangedTo(fi);
+                fcr.changedTo(fi);
                 changeList.add(fcr);
             }
 
@@ -228,10 +228,10 @@ class DeObfuscator {
      *
      * @param Index This is the index of the ClassFile to have its
      * references updated
-     * @param ChangeList This is a list of before/after values from a
+     * @param changeList This is a list of before/after values from a
      * previously deobfuscated file
      */
-    private void fixReferencePass1(int Index, List<Object> ChangeList, List<Object> ownerChangeList) {
+    private void fixReferencePass1(int Index, List<Object> changeList, List<Object> ownerChangeList) {
         // the first pass does the following: - replaces the Super Class name
         // (if it needs replacing) - replaces any constant method/field names
         // (if they need replacing) - replaces the class field names (if needed)
@@ -242,12 +242,12 @@ class DeObfuscator {
             return;
         }
 
-        // - ChangeList[0] is always a string, which is the parent name of the
+        // - changeList[0] is always a string, which is the parent name of the
         // deobfuscated class
-        // - ChangeList[1] is always the deobfuscated (new) class name... yes i
+        // - changeList[1] is always the deobfuscated (new) class name... yes i
         // know this is lame :P
-        String oldParentName = (String) ChangeList.get(0);
-        String newParentName = (String) ChangeList.get(1);
+        String oldParentName = (String) changeList.get(0);
+        String newParentName = (String) changeList.get(1);
 
         // check the Super class name if it needs renaming
         if (classFile.getSuperClassName() == oldParentName) {
@@ -270,11 +270,11 @@ class DeObfuscator {
 
                     // if parents are the same, check the name and descriptor
                     // against the list of originals
-                    for (int j = 2; j < ChangeList.size(); j++) {
-                        if ((ChangeList.get(j) instanceof MethodChangeRecord) && (ci instanceof ConstantMethodrefInfo || ci instanceof ConstantInterfaceMethodrefInfo)) {
+                    for (int j = 2; j < changeList.size(); j++) {
+                        if ((changeList.get(j) instanceof MethodChangeRecord) && (ci instanceof ConstantMethodrefInfo || ci instanceof ConstantInterfaceMethodrefInfo)) {
                             if (ci instanceof ConstantInterfaceMethodrefInfo) {
                                 // handle interface references differently
-                                MethodChangeRecord mcr = (MethodChangeRecord) ChangeList.get(j);
+                                MethodChangeRecord mcr = (MethodChangeRecord) changeList.get(j);
 
                                 // if found update it to the overridden version
                                 if (mcr.getOriginalMethod().getName().value == ci.nameAndType.name && mcr.getOriginalMethod().getDescriptor() == ci.nameAndType.descriptor) {
@@ -290,7 +290,7 @@ class DeObfuscator {
                                     }
                                 }
                             } else {
-                                MethodChangeRecord mcr = (MethodChangeRecord) ChangeList.get(j);
+                                MethodChangeRecord mcr = (MethodChangeRecord) changeList.get(j);
 
                                 // if found update it to the new version...
                                 if (mcr.getOriginalMethod().getName().value == ci.nameAndType.name && mcr.getOriginalMethod().getDescriptor() == ci.nameAndType.descriptor) {
@@ -298,8 +298,8 @@ class DeObfuscator {
                                     break;
                                 }
                             }
-                        } else if ((ChangeList.get(j) instanceof FieldChangeRecord) && (ci instanceof ConstantFieldrefInfo)) {
-                            FieldChangeRecord fcr = (FieldChangeRecord) ChangeList.get(j);
+                        } else if ((changeList.get(j) instanceof FieldChangeRecord) && (ci instanceof ConstantFieldrefInfo)) {
+                            FieldChangeRecord fcr = (FieldChangeRecord) changeList.get(j);
 
                             // if found update it to the new version...
                             if (fcr.getOriginalField().getName().value == ci.nameAndType.name && fcr.getOriginalField().getDescriptor() == ci.nameAndType.descriptor) {
@@ -802,7 +802,7 @@ e.printStackTrace(System.err);
         return attributes;
     }
 
-    public ChangeRecord ChangeMethodName(int methodNumber, String newName) {
+    public ChangeRecord changeMethodName(int methodNumber, String newName) {
         MethodInfo method = methods.getItems().get(methodNumber);
         // MethodInfo OriginalMethod = Method.Clone();
         // MethodInfo NewMethod = null;
@@ -844,7 +844,7 @@ e.printStackTrace(System.err);
         if (methodRef.nameAndType.references <= 1) {
             // if this instanceof the only reference to the name/type descriptor
             // we can overwrite the value
-            methodRef.nameAndType.SetName(newNameIndex, constantPool);
+            methodRef.nameAndType.setName(newNameIndex, constantPool);
         } else {
             // we have to make a new one !
             methodRef.nameAndType.references--;
@@ -861,7 +861,7 @@ e.printStackTrace(System.err);
         return result;
     }
 
-    public ChangeRecord ChangeFieldName(int fieldNumber, String newName) {
+    public ChangeRecord changeFieldName(int fieldNumber, String newName) {
         FieldInfo field = fields.getItems().get(fieldNumber);
 //        FieldInfo originalFieldInfo = Field.clone();
 //        FieldInfo newField = null;
@@ -905,7 +905,7 @@ e.printStackTrace(System.err);
         if (fieldRef.nameAndType.references <= 1) {
             // if this instanceof the only reference to the name/type descriptor
             // we can overwrite the value
-            fieldRef.nameAndType.SetName(newNameIndex, constantPool);
+            fieldRef.nameAndType.setName(newNameIndex, constantPool);
         } else {
             // we have to make a new one !
             fieldRef.nameAndType.references--;
@@ -968,7 +968,7 @@ e.printStackTrace(System.err);
         ConstantUtf8Info newTypeString = new ConstantUtf8Info(newName);
         int newTypeIndex = constantPool.add(newTypeString);
 
-        fieldRef.nameAndType.SetType(newTypeIndex, constantPool);
+        fieldRef.nameAndType.setType(newTypeIndex, constantPool);
     }
 
     public void changeFieldType(int fieldNumber, String oldParentName, String newParentName) {
@@ -996,7 +996,7 @@ e.printStackTrace(System.err);
         // simple changes the name of a method/field in the constant pool
         // TODO: check this!
 
-        MethodInfo methodRef = methods.Item(methodNumber);
+        MethodInfo methodRef = methods.item(methodNumber);
 
         String oldName = methodRef.getDescriptor();
         String newName = Common.FixDescriptor(methodRef.getDescriptor(), oldParentName, newParentName);
@@ -1152,7 +1152,7 @@ class FieldChangeRecord extends ChangeRecord {
         originalField = (FieldInfo) original.clone();
     }
 
-    public void ChangedTo(FieldInfo new_) {
+    public void changedTo(FieldInfo new_) {
         newField = (FieldInfo) new_.clone();
     }
 
@@ -1542,7 +1542,7 @@ class Methods {
         return maxItems;
     }
 
-    public MethodInfo Item(int index) {
+    public MethodInfo item(int index) {
         if (items != null && index < maxItems)
             return items.get(index);
 

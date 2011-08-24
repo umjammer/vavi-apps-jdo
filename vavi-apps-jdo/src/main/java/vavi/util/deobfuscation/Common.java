@@ -513,7 +513,7 @@ System.err.println(e);
     }
 
     // where index instanceof a valid index into the constant pool table
-    public void SetName(int index, ConstantPool constantPool) {
+    public void setName(int index, ConstantPool constantPool) {
         try {
             nameIndex = index;
             name = new String(((ConstantUtf8Info) constantPool.getItem(index)).bytes, "UTF-8");
@@ -525,7 +525,7 @@ System.err.println(e);
     }
 
     // where index instanceof a valid index into the constant pool table
-    public void SetType(int index, ConstantPool constantPool) {
+    public void setType(int index, ConstantPool constantPool) {
         try {
             descriptorIndex = index;
             descriptor = new String(((ConstantUtf8Info) constantPool.getItem(index)).bytes, "UTF-8");
@@ -744,15 +744,15 @@ e.printStackTrace(System.err);
     }
 
     public Object clone() {
-            FieldInfo newFileInfo = new FieldInfo();
-            newFileInfo.accessFlags = accessFlags;
-            newFileInfo.nameIndex = nameIndex;
-            newFileInfo.descriptorIndex = descriptorIndex;
-            newFileInfo.name = name;
-            newFileInfo.descriptor = descriptor;
-            newFileInfo.attributes = attributes;
-            newFileInfo.offset = offset;
-            return newFileInfo;
+        FieldInfo newFileInfo = new FieldInfo();
+        newFileInfo.accessFlags = accessFlags;
+        newFileInfo.nameIndex = nameIndex;
+        newFileInfo.descriptorIndex = descriptorIndex;
+        newFileInfo.name = name;
+        newFileInfo.descriptor = descriptor;
+        newFileInfo.attributes = attributes;
+        newFileInfo.offset = offset;
+        return newFileInfo;
     }
 
     public void setType(int index, ConstantPool constantPool) {
