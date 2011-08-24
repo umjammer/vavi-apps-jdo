@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.ProgressMonitor;
 
@@ -19,50 +20,45 @@ import javax.swing.ProgressMonitor;
 /**
  * These class does the actual deobfuscation
  */
-class TDeObfuscator {
+class DeObfuscator {
 
     // event delegates
-    public static ProgressMonitor Progress;
+    public static ProgressMonitor progress;
 
     // private variables
-    private ArrayList<File> FFiles;
+    private List<File> files;
+    private List<ClassFile> classFiles;
+//    private List<TInterfaces> interfaces;
+    private List<Object> changeList;
 
-    private ArrayList<TClassFile> FClassFiles;
-
-//    private ArrayList<TInterfaces> FInterfaces;
-
-    private ArrayList<Object> FChangeList;
-
-    private boolean FThoroughMode;
-
-    private boolean FCleanup;
-
-    private boolean FRenameClasses;
+    private boolean thoroughMode;
+    private boolean cleanup;
+    private boolean renameClasses;
 
     /**
      * The DeObfuscating engine
      *
-     * @param Files All of the files in the project. Must be full path
+     * @param files All of the files in the project. Must be full path
      * + filename
      */
-    public TDeObfuscator(ArrayList<File> Files) {
-        if (Files == null)
+    public DeObfuscator(List<File> files) {
+        if (files == null)
             return;
 
-        FFiles = Files;
+        this.files = files;
 
-        for (File f : FFiles) {
+        for (File f : files) {
             if (!f.exists())
                 return;
         }
 
-        FCleanup = false;
-        FThoroughMode = true;
-        FRenameClasses = true;
+        cleanup = false;
+        thoroughMode = true;
+        renameClasses = true;
     }
 
-    public boolean DoRename(String Name) {
-        ArrayList<String> bad_names;
+    public boolean doRename(String name) {
+        List<String> bad_names;
 
         bad_names = new ArrayList<String>();
         bad_names.add("for");
@@ -79,151 +75,151 @@ class TDeObfuscator {
         bad_names.add("try");
         bad_names.add("null");
 
-        Name = Common.GetClassName(Name);
+        name = Common.getClassName(name);
 
-        if (Name.charAt(0) == '<')
+        if (name.charAt(0) == '<')
             return false;
 
-        if (Name.length() > 0 && Name.length() <= 2)
+        if (name.length() > 0 && name.length() <= 2)
             return true;
 
-        if (Name.length() > 0 && Name.length() <= 3 && Name.indexOf("$") > 0)
+        if (name.length() > 0 && name.length() <= 3 && name.indexOf("$") > 0)
             return true;
 
         for (String s : bad_names) {
-            if (s == Name)
+            if (s == name)
                 return true;
         }
 
         return false;
     }
 
-    private boolean ClassNameExists(String Name) {
-        for (Object ClassFile : FClassFiles.toArray()) {
-            if (((TClassFile) ClassFile).getThisClassName() == Name)
+    private boolean classNameExists(String name) {
+        for (Object classFile : classFiles.toArray()) {
+            if (((ClassFile) classFile).getThisClassName() == name)
                 return true;
         }
 
         return false;
     }
 
-    private ArrayList<Object> DeObfuscateSingleFile(int index, RenameDatabase RenameStore) {
-        TClassFile ClassFile = FClassFiles.get(index);
+    private List<Object> deObfuscateSingleFile(int index, RenameDatabase renameStore) {
+        ClassFile classFile = classFiles.get(index);
 
-        if (ClassFile == null)
+        if (classFile == null)
             return null;
 
         // add the class name to the head of the changelist
-        FChangeList = new ArrayList<Object>();
-        FChangeList.add(ClassFile.getThisClassName());
+        changeList = new ArrayList<Object>();
+        changeList.add(classFile.getThisClassName());
 
-        String OriginalClassName = ClassFile.getThisClassName();
-        String OriginalClassAndType = ClassFile.getThisClassName() + " : " + ClassFile.getSuperClassName();
+        String originalClassName = classFile.getThisClassName();
+        String originalClassAndType = classFile.getThisClassName() + " : " + classFile.getSuperClassName();
 
         // rename the class and add the new class name to the changelist at [1]
-        if (FRenameClasses && RenameStore.GetNewClassNameOnly(OriginalClassAndType) != null) {
+        if (renameClasses && renameStore.getNewClassNameOnly(originalClassAndType) != null) {
             // check if we need to use a user-supplied class name first
-            String NewClassName = RenameStore.GetNewClassNameOnly(OriginalClassAndType);
+            String newClassName = renameStore.getNewClassNameOnly(originalClassAndType);
 
-            while (ClassNameExists(NewClassName)) {
-                NewClassName += "_";
+            while (classNameExists(newClassName)) {
+                newClassName += "_";
             }
-            FChangeList.add(ClassFile.changeClassName(NewClassName));
-        } else if (FRenameClasses && DoRename(OriginalClassName)) {
-            String NewClassName = "Class_" + Common.GetClassName(OriginalClassName);
+            changeList.add(classFile.changeClassName(newClassName));
+        } else if (renameClasses && doRename(originalClassName)) {
+            String newClassName = "Class_" + Common.getClassName(originalClassName);
 
             // test if the filename we are changing to hasnt already been used!
-            while (ClassNameExists(NewClassName)) {
-                NewClassName += "_";
+            while (classNameExists(newClassName)) {
+                newClassName += "_";
             }
-            FChangeList.add(ClassFile.changeClassName(NewClassName));
+            changeList.add(classFile.changeClassName(newClassName));
         } else
-            FChangeList.add(OriginalClassName);
+            changeList.add(originalClassName);
 
         // process the Methods
-        for (int i = 0; i < ClassFile.getMethods().getItems().size(); i++) {
-            MethodInfo mi = ClassFile.getMethods().getItems().get(i);
-            RenameData rd = RenameStore.GetNewMethodInfo(OriginalClassAndType, mi.getDescriptor(), mi.getName().Value);
+        for (int i = 0; i < classFile.getMethods().getItems().size(); i++) {
+            MethodInfo mi = classFile.getMethods().getItems().get(i);
+            RenameData rd = renameStore.getNewMethodInfo(originalClassAndType, mi.getDescriptor(), mi.getName().value);
 
             // this is the rule for renaming
-            if (DoRename(mi.getName().Value) || rd != null) {
+            if (doRename(mi.getName().value) || rd != null) {
                 // clone the original method
-                TMethodChangeRecord mcr = new TMethodChangeRecord(mi);
+                MethodChangeRecord mcr = new MethodChangeRecord(mi);
                 // rename all of the functions something meaningful
-                String NewName;
+                String newName;
                 // if the offset is zero, it probably means its an abstract
                 // method
-                if (ClassFile.getAccessFlags() == AccessFlags.ACC_INTERFACE)
-                    NewName = String.format("sub_iface_%x", i);
+                if (classFile.getAccessFlags() == AccessFlags.ACC_INTERFACE)
+                    newName = String.format("sub_iface_%x", i);
                 else if (mi.getOffset() != 0)
-                    NewName = String.format("sub_%x", mi.getOffset());
+                    newName = String.format("sub_%x", mi.getOffset());
                 else
-                    NewName = String.format("sub_null_%x", i);
+                    newName = String.format("sub_null_%x", i);
 
-//                 if (FThoroughMode) {
+//                 if (thoroughMode) {
 //                     int j = 0;
-//                     while (ClassFile.getMethods().MethodNameExists(NewName)) { // rename the method
-//                         NewName = NewName + "_" + j;
+//                     while (ClassFile.getMethods().methodNameExists(newName)) { // rename the method
+//                         newName = newName + "_" + j;
 //                         j++;
 //                     }
 //                 }
 
                 // user supplied names take precedence
                 if (rd != null) {
-                    NewName = rd.getFieldName();
+                    newName = rd.getFieldName();
                 }
 
                 // change the method name
-                ClassFile.ChangeMethodName(i, NewName);
+                classFile.ChangeMethodName(i, newName);
                 // set the
-                mcr.ChangedTo(mi);
-                FChangeList.add(mcr);
+                mcr.changedTo(mi);
+                changeList.add(mcr);
             }
 
             // fix the descriptor regardless
-            ClassFile.changeMethodParam(i, OriginalClassName, ClassFile.getThisClassName());
+            classFile.changeMethodParam(i, originalClassName, classFile.getThisClassName());
         }
 
         // process the Fields
-        for (int i = 0; i < ClassFile.getFields().getItems().size(); i++) {
-            FieldInfo fi = ClassFile.getFields().getItems().get(i);
-            RenameData rd = RenameStore.GetNewFieldInfo(OriginalClassAndType, fi.getDescriptor(), fi.getName().Value);
+        for (int i = 0; i < classFile.getFields().getItems().size(); i++) {
+            FieldInfo fi = classFile.getFields().getItems().get(i);
+            RenameData rd = renameStore.getNewFieldInfo(originalClassAndType, fi.getDescriptor(), fi.getName().value);
 
-            if (DoRename(fi.getName().Value) || rd != null) {
+            if (doRename(fi.getName().value) || rd != null) {
                 // clone the original method
-                TFieldChangeRecord fcr = new TFieldChangeRecord(fi);
+                FieldChangeRecord fcr = new FieldChangeRecord(fi);
                 // rename all of the fields something meaningful
-                String NewName;
+                String newName;
                 // if the offset is zero, it probably means its a null/abstract
                 // method
                 if (fi.getOffset() != 0)
-                    NewName = String.format("var_%x", fi.getOffset());
+                    newName = String.format("var_%x", fi.getOffset());
                 else
-                    NewName = String.format("var_null_%x", fi.getOffset());
+                    newName = String.format("var_null_%x", fi.getOffset());
 
-//                if (FThoroughMode) {
+//                if (thoroughMode) {
 //                    int j = 0;
-//                    while (ClassFile.getMethods().FieldNameExists(NewName)) { // rename the field
-//                        NewName = NewName + "_" + j;
+//                    while (classFile.getMethods().fieldNameExists(newName)) { // rename the field
+//                        newName = newName + "_" + j;
 //                        j++;
 //                    }
 //                }
 
                 if (rd != null) {
-                    NewName = rd.getFieldName();
+                    newName = rd.getFieldName();
                 }
 
-                ClassFile.ChangeFieldName(i, NewName);
+                classFile.ChangeFieldName(i, newName);
 
                 fcr.ChangedTo(fi);
-                FChangeList.add(fcr);
+                changeList.add(fcr);
             }
 
             // fix the descriptor regardless
-            ClassFile.ChangeFieldType(i, OriginalClassName, ClassFile.getThisClassName());
+            classFile.changeFieldType(i, originalClassName, classFile.getThisClassName());
         }
 
-        return FChangeList;
+        return changeList;
     }
 
     /**
@@ -235,14 +231,14 @@ class TDeObfuscator {
      * @param ChangeList This is a list of before/after values from a
      * previously deobfuscated file
      */
-    private void FixReferencePass1(int Index, ArrayList<Object> ChangeList, ArrayList<Object> OwnerChangeList) {
+    private void fixReferencePass1(int Index, List<Object> ChangeList, List<Object> ownerChangeList) {
         // the first pass does the following: - replaces the Super Class name
         // (if it needs replacing) - replaces any constant method/field names
         // (if they need replacing) - replaces the class field names (if needed)
         // it does NOT change the original class name
-        TClassFile ClassFile = FClassFiles.get(Index);
+        ClassFile classFile = classFiles.get(Index);
 
-        if (ClassFile == null) {
+        if (classFile == null) {
             return;
         }
 
@@ -250,24 +246,24 @@ class TDeObfuscator {
         // deobfuscated class
         // - ChangeList[1] is always the deobfuscated (new) class name... yes i
         // know this is lame :P
-        String OldParentName = (String) ChangeList.get(0);
-        String NewParentName = (String) ChangeList.get(1);
+        String oldParentName = (String) ChangeList.get(0);
+        String newParentName = (String) ChangeList.get(1);
 
         // check the Super class name if it needs renaming
-        if (ClassFile.getSuperClassName() == OldParentName) {
-            ClassFile.changeSuperClassName(NewParentName);
+        if (classFile.getSuperClassName() == oldParentName) {
+            classFile.changeSuperClassName(newParentName);
         }
 
         // loop through the constant pool for field/method references
         // check the parent of each, and if the parent is the class we have
         // just modified, try and match it to one of the changes
         // in the changearray
-        for (int i = 0; i < ClassFile.getConstantPool().getMaxItems(); i++) {
-            if (ClassFile.getConstantPool().getItem(i) instanceof ConstantPoolMethodInfo) {
-                ConstantPoolMethodInfo ci = (ConstantPoolMethodInfo) ClassFile.getConstantPool().getItem(i);
+        for (int i = 0; i < classFile.getConstantPool().getMaxItems(); i++) {
+            if (classFile.getConstantPool().getItem(i) instanceof ConstantPoolMethodInfo) {
+                ConstantPoolMethodInfo ci = (ConstantPoolMethodInfo) classFile.getConstantPool().getItem(i);
 
                 // check its parent
-                if (ci.ParentClass.Name == OldParentName || ci.ParentClass.Name == NewParentName) {
+                if (ci.parentClass.name == oldParentName || ci.parentClass.name == newParentName) {
                     // check the descriptor
                     // - for fields this is the field type
                     // - for methods this is the parameter list
@@ -275,39 +271,39 @@ class TDeObfuscator {
                     // if parents are the same, check the name and descriptor
                     // against the list of originals
                     for (int j = 2; j < ChangeList.size(); j++) {
-                        if ((ChangeList.get(j) instanceof TMethodChangeRecord) && (ci instanceof ConstantMethodrefInfo || ci instanceof ConstantInterfaceMethodrefInfo)) {
+                        if ((ChangeList.get(j) instanceof MethodChangeRecord) && (ci instanceof ConstantMethodrefInfo || ci instanceof ConstantInterfaceMethodrefInfo)) {
                             if (ci instanceof ConstantInterfaceMethodrefInfo) {
                                 // handle interface references differently
-                                TMethodChangeRecord mcr = (TMethodChangeRecord) ChangeList.get(j);
+                                MethodChangeRecord mcr = (MethodChangeRecord) ChangeList.get(j);
 
                                 // if found update it to the overridden version
-                                if (mcr.getOriginalMethod().getName().Value == ci.NameAndType.Name && mcr.getOriginalMethod().getDescriptor() == ci.NameAndType.Descriptor) {
+                                if (mcr.getOriginalMethod().getName().value == ci.nameAndType.name && mcr.getOriginalMethod().getDescriptor() == ci.nameAndType.descriptor) {
                                     // find the overridden version
-                                    for (int k = 2; k < OwnerChangeList.size(); k++) {
-                                        if (OwnerChangeList.get(k) instanceof TMethodChangeRecord) {
-                                            TMethodChangeRecord mcr2 = (TMethodChangeRecord) OwnerChangeList.get(k);
-                                            if (mcr2.getOriginalMethod().getName().Value == mcr.getOriginalMethod().getName().Value && mcr2.getOriginalMethod().getDescriptor() == mcr.getOriginalMethod().getDescriptor()) {
-                                                ClassFile.ChangeConstantFieldName(i, mcr2.getNewMethod().getName().Value);
+                                    for (int k = 2; k < ownerChangeList.size(); k++) {
+                                        if (ownerChangeList.get(k) instanceof MethodChangeRecord) {
+                                            MethodChangeRecord mcr2 = (MethodChangeRecord) ownerChangeList.get(k);
+                                            if (mcr2.getOriginalMethod().getName().value == mcr.getOriginalMethod().getName().value && mcr2.getOriginalMethod().getDescriptor() == mcr.getOriginalMethod().getDescriptor()) {
+                                                classFile.changeConstantFieldName(i, mcr2.getNewMethod().getName().value);
                                                 break;
                                             }
                                         }
                                     }
                                 }
                             } else {
-                                TMethodChangeRecord mcr = (TMethodChangeRecord) ChangeList.get(j);
+                                MethodChangeRecord mcr = (MethodChangeRecord) ChangeList.get(j);
 
                                 // if found update it to the new version...
-                                if (mcr.getOriginalMethod().getName().Value == ci.NameAndType.Name && mcr.getOriginalMethod().getDescriptor() == ci.NameAndType.Descriptor) {
-                                    ClassFile.ChangeConstantFieldName(i, mcr.getNewMethod().getName().Value);
+                                if (mcr.getOriginalMethod().getName().value == ci.nameAndType.name && mcr.getOriginalMethod().getDescriptor() == ci.nameAndType.descriptor) {
+                                    classFile.changeConstantFieldName(i, mcr.getNewMethod().getName().value);
                                     break;
                                 }
                             }
-                        } else if ((ChangeList.get(j) instanceof TFieldChangeRecord) && (ci instanceof ConstantFieldrefInfo)) {
-                            TFieldChangeRecord fcr = (TFieldChangeRecord) ChangeList.get(j);
+                        } else if ((ChangeList.get(j) instanceof FieldChangeRecord) && (ci instanceof ConstantFieldrefInfo)) {
+                            FieldChangeRecord fcr = (FieldChangeRecord) ChangeList.get(j);
 
                             // if found update it to the new version...
-                            if (fcr.getOriginalField().getName().Value == ci.NameAndType.Name && fcr.getOriginalField().getDescriptor() == ci.NameAndType.Descriptor) {
-                                ClassFile.ChangeConstantFieldName(i, fcr.getNewField().getName().Value);
+                            if (fcr.getOriginalField().getName().value == ci.nameAndType.name && fcr.getOriginalField().getDescriptor() == ci.nameAndType.descriptor) {
+                                classFile.changeConstantFieldName(i, fcr.getNewField().getName().value);
                                 break;
                             }
                         }
@@ -317,17 +313,17 @@ class TDeObfuscator {
         }
 
         // also loop through the Fields array to change all the Types
-        for (int i = 0; i < ClassFile.getFields().MaxItems(); i++) {
-            ClassFile.ChangeFieldType(i, OldParentName, NewParentName);
+        for (int i = 0; i < classFile.getFields().maxItems(); i++) {
+            classFile.changeFieldType(i, oldParentName, newParentName);
         }
         // do the same for methods (fix the parameter list)
-        for (int i = 0; i < ClassFile.getMethods().MaxItems(); i++) {
-            ClassFile.changeMethodParam(i, OldParentName, NewParentName);
+        for (int i = 0; i < classFile.getMethods().maxItems(); i++) {
+            classFile.changeMethodParam(i, oldParentName, newParentName);
         }
         // and the same for all the interfaces
-        for (int i = 0; i < ClassFile.getInterfaces().getItems().size(); i++) {
-            if (ClassFile.getInterfaces().Item(i).getName() == OldParentName)
-                ClassFile.changeInterfaceName(i, NewParentName);
+        for (int i = 0; i < classFile.getInterfaces().getItems().size(); i++) {
+            if (classFile.getInterfaces().item(i).getName() == oldParentName)
+                classFile.changeInterfaceName(i, newParentName);
         }
     }
 
@@ -341,72 +337,72 @@ class TDeObfuscator {
      * class will be updated, simply by
      * changing the class info structure at the source.
      *
-     * @param Index">Index of the class file we want to update</param>
-     * @param ChangeList">The array of changes we made deobfuscating a
-     * file</param>
+     * @param index Index of the class file we want to update
+     * @param changeList The array of changes we made deobfuscating a
+     * file
      */
-    private void FixReferencePass2(int Index, ArrayList<Object> ChangeList) {
-        TClassFile ClassFile = FClassFiles.get(Index);
+    private void fixReferencePass2(int index_, List<Object> changeList) {
+        ClassFile classFile = classFiles.get(index_);
 
-        if (ClassFile == null)
+        if (classFile == null)
             return;
 
-        String OldParentName = (String) ChangeList.get(0);
-        String NewParentName = (String) ChangeList.get(1);
+        String oldParentName = (String) changeList.get(0);
+        String newParentName = (String) changeList.get(1);
 
         // iterate through the constant pool looking for class references
         // that match the old class name
-        for (int i = 0; i < ClassFile.getConstantPool().getMaxItems(); i++) {
-            if (ClassFile.getConstantPool().getItem(i) instanceof ConstantClassInfo) {
-                ConstantClassInfo ci = (ConstantClassInfo) ClassFile.getConstantPool().getItem(i);
+        for (int i = 0; i < classFile.getConstantPool().getMaxItems(); i++) {
+            if (classFile.getConstantPool().getItem(i) instanceof ConstantClassInfo) {
+                ConstantClassInfo ci = (ConstantClassInfo) classFile.getConstantPool().getItem(i);
 
                 // if we found a ClassInfo constant with the same name as the
                 // old name
-                if (ci.Name == OldParentName) {
+                if (ci.name == oldParentName) {
                     // create a new UTF String constant
                     ConstantUtf8Info ui = new ConstantUtf8Info();
                     // set it to the new parent name
-                    ui.SetName(NewParentName);
+                    ui.setName(newParentName);
                     // add it to the constant pool
-                    int index = ClassFile.getConstantPool().Add(ui);
+                    int index = classFile.getConstantPool().add(ui);
                     // set our original ClassInfo constant's name to the newly
                     // added UTF String constant
-                    ci.SetName(index, ClassFile.getConstantPool());
+                    ci.setName(index, classFile.getConstantPool());
                 }
                 // special condition for array type references
-                else if (ci.Name.indexOf("L" + OldParentName + ";") >= 0) {
+                else if (ci.name.indexOf("L" + oldParentName + ";") >= 0) {
                     // create a new UTF String constant
                     ConstantUtf8Info ui = new ConstantUtf8Info();
                     // set it to the new parent name
-                    ui.SetName(ci.Name.replace("L" + OldParentName + ";", "L" + NewParentName + ";"));
+                    ui.setName(ci.name.replace("L" + oldParentName + ";", "L" + newParentName + ";"));
                     // add it to the constant pool
-                    int index = ClassFile.getConstantPool().Add(ui);
+                    int index = classFile.getConstantPool().add(ui);
                     // set our original ClassInfo constant's name to the newly
                     // added UTF String constant
-                    ci.SetName(index, ClassFile.getConstantPool());
+                    ci.setName(index, classFile.getConstantPool());
 
                 }
-            } else if (ClassFile.getConstantPool().getItem(i) instanceof ConstantPoolMethodInfo) {
+            } else if (classFile.getConstantPool().getItem(i) instanceof ConstantPoolMethodInfo) {
                 // check the descriptor
                 // - for fields this instanceof the field type
                 // - for methods this instanceof the parameter list
-                ClassFile.ChangeConstantFieldType(i, OldParentName, NewParentName);
+                classFile.changeConstantFieldType(i, oldParentName, newParentName);
             }
         }
     }
 
-    private void FixReferences(ArrayList<ArrayList<Object>> MasterChangeList) {
+    private void FixReferences(List<List<Object>> masterChangeList) {
         // loop through the change record's and apply them to each file
         // (except itself)
-        for (int i = 0; i < FClassFiles.size(); i++) {
-            for (int j = 0; j < MasterChangeList.size(); j++) {
-                FixReferencePass1(i, MasterChangeList.get(j), MasterChangeList.get(i));
+        for (int i = 0; i < classFiles.size(); i++) {
+            for (int j = 0; j < masterChangeList.size(); j++) {
+                fixReferencePass1(i, masterChangeList.get(j), masterChangeList.get(i));
             }
         }
 
-        for (int i = 0; i < FClassFiles.size(); i++) {
-            for (int j = 0; j < MasterChangeList.size(); j++) {
-                FixReferencePass2(i, MasterChangeList.get(j));
+        for (int i = 0; i < classFiles.size(); i++) {
+            for (int j = 0; j < masterChangeList.size(); j++) {
+                fixReferencePass2(i, masterChangeList.get(j));
             }
         }
     }
@@ -415,14 +411,14 @@ class TDeObfuscator {
      * Find the index of the parent of the classfile, if it exists in the
      * project.
      *
-     * @param Index Index of class file to find parent of
+     * @param index Index of class file to find parent of
      * @returns positive integer index if found, else -1 if not found
      */
-    int FindParent(int Index) {
-        String ParentName = FClassFiles.get(Index).getSuperClassName();
+    int findParent(int index) {
+        String ParentName = classFiles.get(index).getSuperClassName();
 
-        for (int i = 0; i < FClassFiles.size(); i++) {
-            if (i != Index && FClassFiles.get(i).getThisClassName() == ParentName) {
+        for (int i = 0; i < classFiles.size(); i++) {
+            if (i != index && classFiles.get(i).getThisClassName() == ParentName) {
                 return i;
             }
         }
@@ -430,9 +426,9 @@ class TDeObfuscator {
         return -1;
     }
 
-//     int FindClass(String ClassName) {
-//        for (int i = 0; i < FClassFiles.size(); i++) {
-//            if (((TClassFile) FClassFiles[i]).getThisClassName() == ClassName) {
+//     int findClass(String className) {
+//        for (int i = 0; i < classFiles.size(); i++) {
+//            if (((ClassFile) classFiles[i]).getThisClassName() == className) {
 //                return i;
 //            }
 //        }
@@ -440,9 +436,9 @@ class TDeObfuscator {
 //        return -1;
 //    }
 
-    int FindInterface(String ClassName) {
-        for (int i = 0; i < FClassFiles.size(); i++) {
-            if (FClassFiles.get(i).getAccessFlags() == AccessFlags.ACC_INTERFACE && FClassFiles.get(i).getThisClassName() == ClassName) {
+    int findInterface(String className) {
+        for (int i = 0; i < classFiles.size(); i++) {
+            if (classFiles.get(i).getAccessFlags() == AccessFlags.ACC_INTERFACE && classFiles.get(i).getThisClassName() == className) {
                 return i;
             }
         }
@@ -450,29 +446,29 @@ class TDeObfuscator {
         return -1;
     }
 
-    ArrayList<ArrayList<Object>> AddInheritance(int Index, ArrayList<ArrayList<Object>> MasterChangeList) {
-        int Parent = FindParent(Index);
+    List<List<Object>> addInheritance(int index, List<List<Object>> masterChangeList) {
+        int Parent = findParent(index);
 
         if (Parent >= 0) {
-            ArrayList<Object> OriginalChangeList = MasterChangeList.get(Index);
-            ArrayList<Object> ParentChangeList = MasterChangeList.get(Parent);
+            List<Object> originalChangeList = masterChangeList.get(index);
+            List<Object> parentChangeList = masterChangeList.get(Parent);
 
-            for (int i = 2; i < ParentChangeList.size(); i++) {
+            for (int i = 2; i < parentChangeList.size(); i++) {
                 // add the rest of the parent entries to the original
-                OriginalChangeList.add(ParentChangeList.get(i));
+                originalChangeList.add(parentChangeList.get(i));
             }
 
             // last of all, if the parent has another parent, recurse and do it
             // all again
-            if (FindParent(Parent) >= 0) {
-                MasterChangeList = AddInheritance(Parent, MasterChangeList);
+            if (findParent(Parent) >= 0) {
+                masterChangeList = addInheritance(Parent, masterChangeList);
             }
         }
 
-        return MasterChangeList;
+        return masterChangeList;
     }
 
-    ArrayList<ArrayList<Object>> AddInterfaces(int Index, ArrayList<ArrayList<Object>> MasterChangeList) {
+    List<List<Object>> addInterfaces(int index, List<List<Object>> masterChangeList) {
         // this needs to work differently to inheritance
         // it does the following:
         // 1. loop through each interface
@@ -481,24 +477,24 @@ class TDeObfuscator {
         // corresponding entry in
         // current classes change list, and update it
         //   
-        TClassFile ClassFile = FClassFiles.get(Index);
+        ClassFile classFile = classFiles.get(index);
 
         // for each class file, check each of its interfaces
-        for (int i = 0; i < ClassFile.getInterfaces().getItems().size(); i++) {
+        for (int i = 0; i < classFile.getInterfaces().getItems().size(); i++) {
             // check each interface if it matches any deobfuscated
             // classfile/interface in the project
-            for (int j = 0; j < FClassFiles.size(); j++) {
-                String OldName = (String) MasterChangeList.get(j).get(0);
+            for (int j = 0; j < classFiles.size(); j++) {
+                String oldName = (String) masterChangeList.get(j).get(0);
 
-                if (OldName == ClassFile.getInterfaces().Item(i).getName()) {
-                    ArrayList<Object> OriginalChangeList = MasterChangeList.get(Index);
-                    ArrayList<Object> InterfaceChangeList = MasterChangeList.get(j);
+                if (oldName == classFile.getInterfaces().item(i).getName()) {
+                    List<Object> originalChangeList = masterChangeList.get(index);
+                    List<Object> interfaceChangeList = masterChangeList.get(j);
 
-                    for (int k = 2; k < InterfaceChangeList.size(); k++) {
+                    for (int k = 2; k < interfaceChangeList.size(); k++) {
                         // add the rest of the parent entries to the original
                         // NOTE: this might work best if added to the START of
                         // the list!
-                        OriginalChangeList.set(2, InterfaceChangeList.get(k));
+                        originalChangeList.set(2, interfaceChangeList.get(k));
                     }
 
                     break;
@@ -506,46 +502,46 @@ class TDeObfuscator {
             }
         }
 
-        return MasterChangeList;
+        return masterChangeList;
     }
 
-    ArrayList<ArrayList<Object>> FixInheritance(ArrayList<ArrayList<Object>> MasterChangeList) {
-        for (int i = 0; i < FClassFiles.size(); i++) {
-            MasterChangeList = AddInheritance(i, MasterChangeList);
+    List<List<Object>> fixInheritance(List<List<Object>> masterChangeList) {
+        for (int i = 0; i < classFiles.size(); i++) {
+            masterChangeList = addInheritance(i, masterChangeList);
             // MasterChangeList = AddInterfaces(i, MasterChangeList);
         }
 
-        return MasterChangeList;
+        return masterChangeList;
     }
 
-    public ArrayList<File> DeObfuscateAll() {
-        return DeObfuscateAll(null);
+    public List<File> deObfuscateAll() {
+        return deObfuscateAll(null);
     }
 
-    public ArrayList<File> DeObfuscateAll(RenameDatabase RenameStore) {
-        FClassFiles = new ArrayList<TClassFile>();
-//        FInterfaces = new ArrayList<TInterfaces>();
-        ArrayList<ArrayList<Object>> MasterChangeList = new ArrayList<ArrayList<Object>>();
-        ArrayList<File> NewFileNameList = new ArrayList<File>();
+    public List<File> deObfuscateAll(RenameDatabase renameStore) {
+        classFiles = new ArrayList<ClassFile>();
+//        interfaces = new List<TInterfaces>();
+        List<List<Object>> masterChangeList = new ArrayList<List<Object>>();
+        List<File> newFileNameList = new ArrayList<File>();
         int curr_progress = 0;
 
-        Progress.setProgress(0);
+        progress.setProgress(0);
 
         // open each class file and add to array
-        for (File fn : FFiles) {
-            TClassFile cf = new TClassFile(fn);
+        for (File fn : files) {
+            ClassFile cf = new ClassFile(fn);
 
             if (cf != null) {
                 if (cf.open()) {
-                    FClassFiles.add(cf);
+                    classFiles.add(cf);
 
-                    Progress.setProgress(++curr_progress);
+                    progress.setProgress(++curr_progress);
                 }
             }
         }
 
         // do all the work in memory
-        for (int i = 0; i < FClassFiles.size(); i++) {
+        for (int i = 0; i < classFiles.size(); i++) {
             // this deobfuscates a single class, and keeps a record of all the
             // changes
             // in an arraylist of ChangeRecords
@@ -558,31 +554,31 @@ class TDeObfuscator {
             // the old/new name
             // note: this duplications of data fixes problems with inheritance
             //
-            MasterChangeList.add(DeObfuscateSingleFile(i, RenameStore));
+            masterChangeList.add(deObfuscateSingleFile(i, renameStore));
 
-            Progress.setProgress(i + 1);
+            progress.setProgress(i + 1);
         }
 
-        Progress.setProgress(0);
+        progress.setProgress(0);
         curr_progress = 0;
 
         // iterate through all the class files using the change records saved
         // after the deobfuscation was done
-        MasterChangeList = FixInheritance(MasterChangeList);
+        masterChangeList = fixInheritance(masterChangeList);
 
         // iterate through all the class files using the change records saved
         // after the deobfuscation was done
-        FixReferences(MasterChangeList);
+        FixReferences(masterChangeList);
 
         // save all the class files
-        for (TClassFile cf : FClassFiles) {
+        for (ClassFile cf : classFiles) {
             // extract the actual filename from the path and replace it with the
             // new ClassName
-            String file_name = cf.getFile().getParent() + File.separator + Common.GetClassName(cf.getThisClassName()) + ".class";
+            String file_name = cf.getFile().getParent() + File.separator + Common.getClassName(cf.getThisClassName()) + ".class";
 
             // file_name = file_name.Replace('/', '\\');
 
-            if ((file_name != cf.getFile().getPath()) && FCleanup) {
+            if ((file_name != cf.getFile().getPath()) && cleanup) {
                 cf.getFile().delete();
             }
 
@@ -590,39 +586,39 @@ class TDeObfuscator {
             if (!new File(file_name).getParentFile().exists())
                 new File(file_name).getParentFile().mkdir();
 
-            cf.Save(file_name);
+            cf.save(file_name);
 
             // return the new filename so the main gui knows what to reload
-            NewFileNameList.add(new File(file_name));
+            newFileNameList.add(new File(file_name));
 
-            Progress.setProgress(++curr_progress);
+            progress.setProgress(++curr_progress);
         }
 
-        return NewFileNameList;
+        return newFileNameList;
     }
 
     public boolean getThoroughMode() {
-        return FThoroughMode;
+        return thoroughMode;
     }
 
     public void setThoroughMode(boolean value) {
-        FThoroughMode = value;
+        thoroughMode = value;
     }
 
     public boolean getCleanup() {
-        return FCleanup;
+        return cleanup;
     }
 
     public void setCleanup(boolean value) {
-        FCleanup = value;
+        cleanup = value;
     }
 
     public boolean getRenameClasses() {
-        return FRenameClasses;
+        return renameClasses;
     }
 
     public void setRenameClasses(boolean value) {
-        FRenameClasses = value;
+        renameClasses = value;
     }
 }
 
@@ -630,93 +626,87 @@ class TDeObfuscator {
  * These class encapsulates the java .class file With a few special methods
  * jammed in to help rename methods and fields (and refs)
  */
-class TClassFile {
+class ClassFile {
     // my internal variables
-    String fThisClassName;
-
-    String fSuperClassName;
+    String thisClassName;
+    String superClassName;
 
     // internal class file members as designated by Sun
-    private int FMagic;
-
-    private int FMinorVersion;
-
-    private int FMajorVersion;
+    private int magic;
+    private int minorVersion;
+    private int majorVersion;
 
     // private int FConstantPoolCount;
-    private TConstantPool FConstantPool;
-
-    private AccessFlags FAccessFlags;
-
-    private int FThisClass;
-
-    private int FSuperClass;
+    private ConstantPool constantPool;
+    private AccessFlags accessFlags;
+    private int thisClass;
+    private int superClass;
 
     // private int FInterfacesCount;
-    private TInterfaces FInterfaces;
+    private Interfaces interfaces;
 
     // private int FFieldsCount;
-    private TFields FFields;
+    private Fields fields;
 
     // private int FMethodsCount;
-    private TMethods FMethods;
+    private Methods methods;
 
     // private int FAttributesCount;
-    private TAttributes FAttributes;
+    private Attributes attributes;
 
     // internal variables
-    private File FClassFile = null;
+    private File classFile = null;
 
-    private DataInput FReader = null;
+    private DataInput reader = null;
 
-    public TClassFile(File ClassFileName) {
-        FClassFile = ClassFileName;
+    public ClassFile(File classFileName) {
+        classFile = classFileName;
 //        FHasBeenOpened = false;
-        fThisClassName = "";
-        fSuperClassName = "";
+        thisClassName = "";
+        superClassName = "";
     }
 
     public boolean open() {
-        if (FClassFile.exists()) {
+        if (classFile.exists()) {
             try {
                 // read the .class file systematically
-                InputStream fs = new FileInputStream(FClassFile);
-                FReader = new DataInputStream(fs);
+                InputStream fs = new FileInputStream(classFile);
+                reader = new DataInputStream(fs);
                 Common.position = 0;
                 // read header
-                FMagic = Common.readInt(FReader);
-System.err.printf("magic: %08x\n", FMagic);
+                magic = Common.readInt(reader);
+System.err.printf("magic: %08x\n", magic);
 
-                if (FMagic != 0x0CAFEBABE) {
+                if (magic != 0x0CAFEBABE) {
                     return false;
                 }
 
-                FMinorVersion = Common.readShort(FReader);
-System.err.printf("minorVersion: %04x\n", FMinorVersion);
-                FMajorVersion = Common.readShort(FReader);
-System.err.printf("majorVersion: %04x\n", FMajorVersion);
+                minorVersion = Common.readShort(reader);
+System.err.printf("minorVersion: %04x\n", minorVersion);
+                majorVersion = Common.readShort(reader);
+System.err.printf("majorVersion: %04x\n", majorVersion);
                 // read constant pool
                 // this also reads the "FConstantPoolCount"
                 // so instead use FConstantPool.MaxItems or somesuch
-                FConstantPool = new TConstantPool(FReader);
+                constantPool = new ConstantPool(reader);
                 // more constants
-                FAccessFlags = AccessFlags.valueOf(Common.readShort(FReader));
-                FThisClass = Common.readShort(FReader);
-                FThisClass--;
-System.err.printf("thisClass: %04x\n", FThisClass);
-                FSuperClass = Common.readShort(FReader);
-                FSuperClass--;
-System.err.printf("superClass: %04x\n", FSuperClass);
+                accessFlags = AccessFlags.valueOf(Common.readShort(reader));
+                thisClass = Common.readShort(reader);
+                thisClass--;
+System.err.printf("thisClass: %04x\n", thisClass);
+                superClass = Common.readShort(reader);
+                superClass--;
+System.err.printf("superClass: %04x\n", superClass);
 
-                fThisClassName = ((ConstantClassInfo) FConstantPool.getItem(FThisClass)).Name;
-                (FConstantPool.getItem(FThisClass)).references++;
-                fSuperClassName = ((ConstantClassInfo) FConstantPool.getItem(FSuperClass)).Name;
-                (FConstantPool.getItem(FSuperClass)).references++;
+                thisClassName = ((ConstantClassInfo) constantPool.getItem(thisClass)).name;
+                (constantPool.getItem(thisClass)).references++;
+                superClassName = ((ConstantClassInfo) constantPool.getItem(superClass)).name;
+                (constantPool.getItem(superClass)).references++;
 
-                FInterfaces = new TInterfaces(FReader, FConstantPool);
-                FFields = new TFields(FReader, FConstantPool);
-                FMethods = new TMethods(FReader, FConstantPool);
-                FAttributes = new TAttributes(FReader, FConstantPool);
+                interfaces = new Interfaces(reader, constantPool);
+                fields = new Fields(reader, constantPool);
+                methods = new Methods(reader, constantPool);
+                attributes = new Attributes(reader, constantPool);
 
                 // FHasBeenOpened = true;
 
@@ -734,31 +724,31 @@ System.err.println("here2");
         return false;
     }
 
-    public boolean Save(String FileName) {
+    public boolean save(String fileName) {
 //         if (true) { // FHasBeenOpened)
 
         try {
             // read the .class file systematically
-            OutputStream fs = new FileOutputStream(FileName);
-            DataOutput FWriter = new DataOutputStream(fs);
+            OutputStream fs = new FileOutputStream(fileName);
+            DataOutput writer = new DataOutputStream(fs);
             Common.position = 0;
             // write header
-            Common.writeInt(FWriter, FMagic);
+            Common.writeInt(writer, magic);
 
-            Common.writeShort(FWriter, FMinorVersion);
-            Common.writeShort(FWriter, FMajorVersion);
+            Common.writeShort(writer, minorVersion);
+            Common.writeShort(writer, majorVersion);
             // write constant pool
             // this also writes the "FConstantPoolCount"
-            FConstantPool.write(FWriter);
+            constantPool.write(writer);
             // more constants
-            Common.writeShort(FWriter, FAccessFlags.value);
-            Common.writeShort(FWriter, FThisClass + 1);
-            Common.writeShort(FWriter, FSuperClass + 1);
+            Common.writeShort(writer, accessFlags.value);
+            Common.writeShort(writer, thisClass + 1);
+            Common.writeShort(writer, superClass + 1);
 
-            FInterfaces.Write(FWriter);
-            FFields.Write(FWriter);
-            FMethods.Write(FWriter);
-            FAttributes.Write(FWriter);
+            interfaces.write(writer);
+            fields.write(writer);
+            methods.write(writer);
+            attributes.write(writer);
 
             fs.close();
             return true;
@@ -773,59 +763,59 @@ e.printStackTrace(System.err);
     }
 
     public int getMagic() {
-        return FMagic;
+        return magic;
     }
 
     public void setMagic(int value) {
-        FMagic = value;
+        magic = value;
     }
 
-    public String Version() {
-        return FMajorVersion + "." + FMinorVersion;
+    public String version() {
+        return majorVersion + "." + minorVersion;
     }
 
     public File getFile() {
-        return FClassFile;
+        return classFile;
     }
 
     public AccessFlags getAccessFlags() {
-        return FAccessFlags;
+        return accessFlags;
     }
 
-    public TConstantPool getConstantPool() {
-        return FConstantPool;
+    public ConstantPool getConstantPool() {
+        return constantPool;
     }
 
-    public TInterfaces getInterfaces() {
-        return FInterfaces;
+    public Interfaces getInterfaces() {
+        return interfaces;
     }
 
-    public TFields getFields() {
-        return FFields;
+    public Fields getFields() {
+        return fields;
     }
 
-    public TMethods getMethods() {
-        return FMethods;
+    public Methods getMethods() {
+        return methods;
     }
 
-    public TAttributes getAttributes() {
-        return FAttributes;
+    public Attributes getAttributes() {
+        return attributes;
     }
 
-    public TChangeRecord ChangeMethodName(int MethodNumber, String NewName) {
-        MethodInfo Method = FMethods.getItems().get(MethodNumber);
+    public ChangeRecord ChangeMethodName(int methodNumber, String newName) {
+        MethodInfo method = methods.getItems().get(methodNumber);
         // MethodInfo OriginalMethod = Method.Clone();
         // MethodInfo NewMethod = null;
-        TChangeRecord Result = null;
-        ConstantMethodrefInfo MethodRef = null;
-        int NewNameIndex;
+        ChangeRecord result = null;
+        ConstantMethodrefInfo methodRef = null;
+        int newNameIndex;
 
         // first we need to loop through the constant pool for method
         // references that match our new method name
-        for (int i = 0; i < FConstantPool.getMaxItems(); i++) {
-            if (FConstantPool.getItem(i).tag == (byte) ConstantPoolInfoTag.ConstantMethodref.value) {
-                MethodRef = (ConstantMethodrefInfo) FConstantPool.getItem(i);
-                if (MethodRef.ParentClass.Name == fThisClassName && MethodRef.NameAndType.Name == Method.getName().Value && MethodRef.NameAndType.Descriptor == Method.getDescriptor()) {
+        for (int i = 0; i < constantPool.getMaxItems(); i++) {
+            if (constantPool.getItem(i).tag == (byte) ConstantPoolInfoTag.ConstantMethodref.value) {
+                methodRef = (ConstantMethodrefInfo) constantPool.getItem(i);
+                if (methodRef.parentClass.name == thisClassName && methodRef.nameAndType.name == method.getName().value && methodRef.nameAndType.descriptor == method.getDescriptor()) {
                     // jackpot, we found the reference!
                     // there should be only one, so we will break and fix it up
                     // after we generate the new name
@@ -833,58 +823,58 @@ e.printStackTrace(System.err);
                 }
             }
 
-            MethodRef = null;
+            methodRef = null;
         }
 
-        Method.getName().references--;
+        method.getName().references--;
         // add a new String constant to the pool
-        ConstantUtf8Info NewUtf = new ConstantUtf8Info(NewName);
+        ConstantUtf8Info newUtf = new ConstantUtf8Info(newName);
 
-        NewNameIndex = getConstantPool().Add(NewUtf);
+        newNameIndex = getConstantPool().add(newUtf);
 
         // set the method its new name
-        Method.SetName(NewNameIndex, getConstantPool());
-        Method.getName().references = 1;
+        method.setName(newNameIndex, getConstantPool());
+        method.getName().references = 1;
 
         // NewMethod = Method.Clone();
 
-        if (MethodRef == null)
-            return Result;
+        if (methodRef == null)
+            return result;
 
-        if (MethodRef.NameAndType.references <= 1) {
+        if (methodRef.nameAndType.references <= 1) {
             // if this instanceof the only reference to the name/type descriptor
             // we can overwrite the value
-            MethodRef.NameAndType.SetName(NewNameIndex, FConstantPool);
+            methodRef.nameAndType.SetName(newNameIndex, constantPool);
         } else {
             // we have to make a new one !
-            MethodRef.NameAndType.references--;
+            methodRef.nameAndType.references--;
             // add a new String constant to the pool
-            ConstantNameAndTypeInfo NewNaT = new ConstantNameAndTypeInfo(NewNameIndex, MethodRef.NameAndType.getTypeIndex(), FConstantPool);
+            ConstantNameAndTypeInfo newNaT = new ConstantNameAndTypeInfo(newNameIndex, methodRef.nameAndType.getTypeIndex(), constantPool);
 
-            int NewIndex = getConstantPool().Add(NewNaT);
+            int newIndex = getConstantPool().add(newNaT);
 
             // set the method its new name
-            MethodRef.SetNameAndType(NewIndex, getConstantPool());
-            MethodRef.NameAndType.references = 1;
+            methodRef.setNameAndType(newIndex, getConstantPool());
+            methodRef.nameAndType.references = 1;
         }
 
-        return Result;
+        return result;
     }
 
-    public TChangeRecord ChangeFieldName(int FieldNumber, String NewName) {
-        FieldInfo Field = FFields.getItems().get(FieldNumber);
-        // FieldInfo OriginalFieldInfo = Field.Clone();
-        // FieldInfo NewField = null;
-        TChangeRecord Result = null;
-        ConstantFieldrefInfo FieldRef = null;
-        int NewNameIndex;
+    public ChangeRecord ChangeFieldName(int fieldNumber, String newName) {
+        FieldInfo field = fields.getItems().get(fieldNumber);
+//        FieldInfo originalFieldInfo = Field.clone();
+//        FieldInfo newField = null;
+        ChangeRecord result = null;
+        ConstantFieldrefInfo fieldRef = null;
+        int newNameIndex;
 
         // first we need to loop through the constant pool for method
         // references that match our new method name
-        for (int i = 0; i < FConstantPool.getMaxItems(); i++) {
-            if (FConstantPool.getItem(i).tag == (byte) ConstantPoolInfoTag.ConstantFieldref.value) {
-                FieldRef = (ConstantFieldrefInfo) FConstantPool.getItem(i);
-                if (FieldRef.ParentClass.Name == fThisClassName && FieldRef.NameAndType.Name == Field.getName().Value && FieldRef.NameAndType.Descriptor == Field.getDescriptor()) {
+        for (int i = 0; i < constantPool.getMaxItems(); i++) {
+            if (constantPool.getItem(i).tag == (byte) ConstantPoolInfoTag.ConstantFieldref.value) {
+                fieldRef = (ConstantFieldrefInfo) constantPool.getItem(i);
+                if (fieldRef.parentClass.name == thisClassName && fieldRef.nameAndType.name == field.getName().value && fieldRef.nameAndType.descriptor == field.getDescriptor()) {
                     // jackpot, we found the reference!
                     // there should be only one, so we will break and fix it up
                     // after we generate the new name
@@ -892,113 +882,113 @@ e.printStackTrace(System.err);
                 }
             }
 
-            FieldRef = null;
+            fieldRef = null;
         }
 
-        Field.getName().references--;
+        field.getName().references--;
 
         // add a new String constant to the pool
-        ConstantUtf8Info NewUtf = new ConstantUtf8Info(NewName);
+        ConstantUtf8Info newUtf = new ConstantUtf8Info(newName);
 
-        NewNameIndex = getConstantPool().Add(NewUtf);
+        newNameIndex = getConstantPool().add(newUtf);
 
         // set the method its new name
-        Field.SetName(NewNameIndex, getConstantPool());
-        Field.getName().references = 1;
+        field.setName(newNameIndex, getConstantPool());
+        field.getName().references = 1;
 
         // NewField = Field.Clone();
 
-        if (FieldRef == null) {
-            return Result;
+        if (fieldRef == null) {
+            return result;
         }
 
-        if (FieldRef.NameAndType.references <= 1) {
+        if (fieldRef.nameAndType.references <= 1) {
             // if this instanceof the only reference to the name/type descriptor
             // we can overwrite the value
-            FieldRef.NameAndType.SetName(NewNameIndex, FConstantPool);
+            fieldRef.nameAndType.SetName(newNameIndex, constantPool);
         } else {
             // we have to make a new one !
-            FieldRef.NameAndType.references--;
+            fieldRef.nameAndType.references--;
             // add a new String constant to the pool
-            ConstantNameAndTypeInfo NewNaT = new ConstantNameAndTypeInfo(NewNameIndex, FieldRef.NameAndType.getTypeIndex(), FConstantPool);
+            ConstantNameAndTypeInfo NewNaT = new ConstantNameAndTypeInfo(newNameIndex, fieldRef.nameAndType.getTypeIndex(), constantPool);
 
-            int NewIndex = getConstantPool().Add(NewNaT);
+            int NewIndex = getConstantPool().add(NewNaT);
 
             // set the method its new name
-            FieldRef.SetNameAndType(NewIndex, getConstantPool());
-            FieldRef.NameAndType.references = 1;
+            fieldRef.setNameAndType(NewIndex, getConstantPool());
+            fieldRef.nameAndType.references = 1;
         }
 
-        return Result;
+        return result;
     }
 
-    public void ChangeConstantFieldName(int FieldNumber, String NewName) {
+    public void changeConstantFieldName(int fieldNumber, String newName) {
         // takes an index into the constantpool
         // simple changes the name of a method/field in the constant pool
         // always create new name
         // TODO: check this!
 
-        ConstantPoolMethodInfo FieldRef = (ConstantPoolMethodInfo) FConstantPool.getItem(FieldNumber);
+        ConstantPoolMethodInfo fieldRef = (ConstantPoolMethodInfo) constantPool.getItem(fieldNumber);
 
-        ConstantUtf8Info NewNameString = new ConstantUtf8Info(NewName);
-        int NewNameIndex = FConstantPool.Add(NewNameString);
+        ConstantUtf8Info newNameString = new ConstantUtf8Info(newName);
+        int newNameIndex = constantPool.add(newNameString);
 
         // we have to make a new one !
-        FieldRef.NameAndType.references--;
+        fieldRef.nameAndType.references--;
         // add a new String constant to the pool
-        ConstantNameAndTypeInfo NewNaT = new ConstantNameAndTypeInfo(NewNameIndex, FieldRef.NameAndType.getTypeIndex(), FConstantPool);
+        ConstantNameAndTypeInfo newNaT = new ConstantNameAndTypeInfo(newNameIndex, fieldRef.nameAndType.getTypeIndex(), constantPool);
 
-        int NewIndex = FConstantPool.Add(NewNaT);
+        int NewIndex = constantPool.add(newNaT);
 
         // set the method its new name
-        FieldRef.SetNameAndType(NewIndex, FConstantPool);
-        FieldRef.NameAndType.references = 1;
+        fieldRef.setNameAndType(NewIndex, constantPool);
+        fieldRef.nameAndType.references = 1;
     }
 
-    public void ChangeConstantFieldParent(int FieldNumber, int ParentNumber) {
-        ConstantPoolMethodInfo FieldRef = (ConstantPoolMethodInfo) FConstantPool.getItem(FieldNumber);
+    public void changeConstantFieldParent(int fieldNumber, int parentNumber) {
+        ConstantPoolMethodInfo fieldRef = (ConstantPoolMethodInfo) constantPool.getItem(fieldNumber);
 
-        FieldRef.ParentClass.references--;
-        FieldRef.SetParent(ParentNumber, FConstantPool);
+        fieldRef.parentClass.references--;
+        fieldRef.setParent(parentNumber, constantPool);
     }
 
-    public void ChangeConstantFieldType(int FieldNumber, String OldParentName, String NewParentName) {
+    public void changeConstantFieldType(int fieldNumber, String oldParentName, String newParentName) {
         // takes an index into the constantpool
         // simple changes the name of a method/field in the constant pool
         // always create new name
         // TODO: check this!
 
-        ConstantPoolMethodInfo FieldRef = (ConstantPoolMethodInfo) FConstantPool.getItem(FieldNumber);
-        String OldName = FieldRef.NameAndType.Descriptor;
-        String NewName = Common.FixDescriptor(FieldRef.NameAndType.Descriptor, OldParentName, NewParentName);
+        ConstantPoolMethodInfo fieldRef = (ConstantPoolMethodInfo) constantPool.getItem(fieldNumber);
+        String oldName = fieldRef.nameAndType.descriptor;
+        String newName = Common.FixDescriptor(fieldRef.nameAndType.descriptor, oldParentName, newParentName);
 
-        if (OldName == NewName)
+        if (oldName == newName)
             return;
 
-        ConstantUtf8Info NewTypeString = new ConstantUtf8Info(NewName);
-        int NewTypeIndex = FConstantPool.Add(NewTypeString);
+        ConstantUtf8Info newTypeString = new ConstantUtf8Info(newName);
+        int newTypeIndex = constantPool.add(newTypeString);
 
-        FieldRef.NameAndType.SetType(NewTypeIndex, FConstantPool);
+        fieldRef.nameAndType.SetType(newTypeIndex, constantPool);
     }
 
-    public void ChangeFieldType(int FieldNumber, String OldParentName, String NewParentName) {
+    public void changeFieldType(int fieldNumber, String oldParentName, String newParentName) {
         // takes an index into the constantpool
         // simple changes the name of a method/field in the constant pool
         // TODO: check this!
 
-        FieldInfo FieldRef = FFields.Item(FieldNumber);
+        FieldInfo fieldRef = fields.Item(fieldNumber);
 
-        String OldName = FieldRef.getDescriptor();
-        String NewName = Common.FixDescriptor(FieldRef.getDescriptor(), OldParentName, NewParentName);
+        String oldName = fieldRef.getDescriptor();
+        String newName = Common.FixDescriptor(fieldRef.getDescriptor(), oldParentName, newParentName);
 
-        if (OldName == NewName)
+        if (oldName == newName)
             return;
 
-        ConstantUtf8Info NewTypeString = new ConstantUtf8Info(NewName);
-        int NewTypeIndex = FConstantPool.Add(NewTypeString);
+        ConstantUtf8Info newTypeString = new ConstantUtf8Info(newName);
+        int newTypeIndex = constantPool.add(newTypeString);
 
         // set the method its new name
-        FieldRef.SetType(NewTypeIndex, FConstantPool);
+        fieldRef.setType(newTypeIndex, constantPool);
     }
 
     public void changeMethodParam(int methodNumber, String oldParentName, String newParentName) {
@@ -1006,7 +996,7 @@ e.printStackTrace(System.err);
         // simple changes the name of a method/field in the constant pool
         // TODO: check this!
 
-        MethodInfo methodRef = FMethods.Item(methodNumber);
+        MethodInfo methodRef = methods.Item(methodNumber);
 
         String oldName = methodRef.getDescriptor();
         String newName = Common.FixDescriptor(methodRef.getDescriptor(), oldParentName, newParentName);
@@ -1015,101 +1005,101 @@ e.printStackTrace(System.err);
             return;
 
         ConstantUtf8Info newTypeString = new ConstantUtf8Info(newName);
-        int newTypeIndex = FConstantPool.Add(newTypeString);
+        int newTypeIndex = constantPool.add(newTypeString);
 
         // set the method its new name
-        methodRef.SetType(newTypeIndex, FConstantPool);
+        methodRef.setType(newTypeIndex, constantPool);
     }
 
-    public void changeInterfaceName(int InterfaceNumber, String NewName) {
+    public void changeInterfaceName(int interfaceNumber, String newName) {
         // takes an index into the interface list
         // simple changes the name of a method/field in the constant pool
         // TODO: check this!
 
-        InterfaceInfo intInfo = FInterfaces.Item(InterfaceNumber);
+        InterfaceInfo intInfo = interfaces.item(interfaceNumber);
 
-        if (intInfo.getName() == NewName)
+        if (intInfo.getName() == newName)
             return;
 
-        ConstantUtf8Info newTypeString = new ConstantUtf8Info(NewName);
-        int newTypeIndex = FConstantPool.Add(newTypeString);
+        ConstantUtf8Info newTypeString = new ConstantUtf8Info(newName);
+        int newTypeIndex = constantPool.add(newTypeString);
 
         // set the interface its new name
         ConstantClassInfo cci = (ConstantClassInfo) getConstantPool().getItem(intInfo.getValue());
-        cci.SetName(newTypeIndex, FConstantPool);
+        cci.setName(newTypeIndex, constantPool);
     }
 
     public String getThisClassName() {
-        return fThisClassName;
+        return thisClassName;
     }
 
     public String getSuperClassName() {
-        return fSuperClassName;
+        return superClassName;
     }
 
-    public String changeClassName(String Name) {
-        ConstantClassInfo ClassInfo = (ConstantClassInfo) FConstantPool.getItem(FThisClass);
-        ConstantUtf8Info UtfInfo = (ConstantUtf8Info) FConstantPool.getItem(ClassInfo.NameIndex);
+    public String changeClassName(String name) {
+        ConstantClassInfo classInfo = (ConstantClassInfo) constantPool.getItem(thisClass);
+        ConstantUtf8Info utfInfo = (ConstantUtf8Info) constantPool.getItem(classInfo.nameIndex);
 
         // change the class name, not the directory structure
-        Name = Common.NewClassName(getThisClassName(), Name);
+        name = Common.newClassName(getThisClassName(), name);
 
         // we have to make a new one !
-        UtfInfo.references--;
+        utfInfo.references--;
         // add a new String constant to the pool
-        ConstantUtf8Info NewUtf = new ConstantUtf8Info(Name);
+        ConstantUtf8Info newUtf = new ConstantUtf8Info(name);
 
-        int NewIndex = getConstantPool().Add(NewUtf);
+        int newIndex = getConstantPool().add(newUtf);
 
         // set the method its new name
-        ClassInfo.SetName(NewIndex, FConstantPool);
-        NewUtf.references = 1;
+        classInfo.setName(newIndex, constantPool);
+        newUtf.references = 1;
 
-        fThisClassName = ((ConstantClassInfo) FConstantPool.getItem(FThisClass)).Name;
+        thisClassName = ((ConstantClassInfo) constantPool.getItem(thisClass)).name;
 
-        return Name;
+        return name;
     }
 
     public int changeSuperClassName(String newName) {
-        ConstantClassInfo ClassInfo = (ConstantClassInfo) FConstantPool.getItem(FSuperClass);
-        ConstantUtf8Info UtfInfo = (ConstantUtf8Info) FConstantPool.getItem(ClassInfo.NameIndex);
+        ConstantClassInfo classInfo = (ConstantClassInfo) constantPool.getItem(superClass);
+        ConstantUtf8Info utfInfo = (ConstantUtf8Info) constantPool.getItem(classInfo.nameIndex);
 
         // skip this coz we already passing the full name in
         // NewName = Common.NewClassName(FSuperClassName, NewName);
 
-        if (UtfInfo.references <= 1) {
+        if (utfInfo.references <= 1) {
             // if this is the only reference to the name/type descriptor
             // we can overwrite the value
-            UtfInfo.SetName(newName);
+            utfInfo.setName(newName);
         } else {
             // we have to make a new one !
-            UtfInfo.references--;
+            utfInfo.references--;
             // add a new String constant to the pool
             ConstantUtf8Info NewUtf = new ConstantUtf8Info(newName);
 
-            int NewIndex = getConstantPool().Add(NewUtf);
+            int NewIndex = getConstantPool().add(NewUtf);
 
             // set the method its new name
-            ClassInfo.NameIndex = NewIndex;
+            classInfo.nameIndex = NewIndex;
             NewUtf.references = 1;
         }
 
-        fSuperClassName = ((ConstantClassInfo) FConstantPool.getItem(FSuperClass)).Name;
+        superClassName = ((ConstantClassInfo) constantPool.getItem(superClass)).name;
 
-        return FSuperClass;
+        return superClass;
     }
 
-    public int AddConstantClassName(String NewName) {
+    public int addConstantClassName(String newName) {
         ConstantClassInfo ClassInfo = new ConstantClassInfo();
         ConstantUtf8Info UtfInfo = new ConstantUtf8Info();
 
-        int NewClassIndex = FConstantPool.Add(ClassInfo);
-        int NewUtfIndex = FConstantPool.Add(UtfInfo);
+        int newClassIndex = constantPool.add(ClassInfo);
+        int newUtfIndex = constantPool.add(UtfInfo);
 
-        UtfInfo.SetName(NewName);
-        ClassInfo.SetName(NewUtfIndex, FConstantPool);
+        UtfInfo.setName(newName);
+        ClassInfo.setName(newUtfIndex, constantPool);
 
-        return NewClassIndex;
+        return newClassIndex;
     }
 
 }
@@ -1125,54 +1115,53 @@ e.printStackTrace(System.err);
 // changed
 //
 
-abstract class TChangeRecord {
+abstract class ChangeRecord {
 }
 
-class TMethodChangeRecord extends TChangeRecord {
+class MethodChangeRecord extends ChangeRecord {
     // just a simple class to hold the information temporarily
-    private MethodInfo FOriginalMethod;
+    private MethodInfo originalMethod;
 
-    private MethodInfo FNewMethod;
+    private MethodInfo newMethod;
 
-    public TMethodChangeRecord(MethodInfo Original) {
-        FOriginalMethod = (MethodInfo) Original.clone();
+    public MethodChangeRecord(MethodInfo original) {
+        originalMethod = (MethodInfo) original.clone();
     }
 
-    public void ChangedTo(MethodInfo New) {
-        FNewMethod = (MethodInfo) New.clone();
+    public void changedTo(MethodInfo new_) {
+        newMethod = (MethodInfo) new_.clone();
     }
 
     public MethodInfo getOriginalMethod() {
 
-        return FOriginalMethod;
+        return originalMethod;
     }
 
     public MethodInfo getNewMethod() {
-        return FNewMethod;
+        return newMethod;
     }
 }
 
-class TFieldChangeRecord extends TChangeRecord {
+class FieldChangeRecord extends ChangeRecord {
     // just a simple class to hold the information temporarily
-    private FieldInfo FOriginalField;
+    private FieldInfo originalField;
 
-    private FieldInfo FNewField;
+    private FieldInfo newField;
 
-    public TFieldChangeRecord(FieldInfo Original) {
-        FOriginalField = (FieldInfo) Original.clone();
+    public FieldChangeRecord(FieldInfo original) {
+        originalField = (FieldInfo) original.clone();
     }
 
-    public void ChangedTo(FieldInfo New) {
-        FNewField = (FieldInfo) New.clone();
+    public void ChangedTo(FieldInfo new_) {
+        newField = (FieldInfo) new_.clone();
     }
 
     public FieldInfo getOriginalField() {
-
-        return FOriginalField;
+        return originalField;
     }
 
     public FieldInfo getNewField() {
-        return FNewField;
+        return newField;
     }
 }
 
@@ -1182,97 +1171,95 @@ class TFieldChangeRecord extends TChangeRecord {
 // These are all used by TClassFile to import each of its major sections
 //
 
-class TConstantPool {
-    DataInput FReader;
+class ConstantPool {
+    DataInput reader;
+    List<ConstantPoolInfo> items = null;
+    int maxItems = 0;
 
-    ArrayList<ConstantPoolInfo> fItems = null;
+    public ConstantPool(DataInput reader) throws IOException {
+        this.reader = reader;
 
-    int fMaxItems = 0;
-
-    public TConstantPool(DataInput Reader) throws IOException {
-        FReader = Reader;
-
-        fMaxItems = Common.readShort(FReader) - 1;
-System.err.printf("maxItems: %d\n", fMaxItems);
-        fItems = new ArrayList<ConstantPoolInfo>();
+        maxItems = Common.readShort(reader) - 1;
+System.err.printf("maxItems: %d\n", maxItems);
+        items = new ArrayList<ConstantPoolInfo>();
         int count = 0;
 
         // goes from 1 -> constantpoolcount - 1
-        while (count < fMaxItems) {
-            int tag = Common.readByte(FReader);
+        while (count < maxItems) {
+            int tag = Common.readByte(reader);
 System.err.printf("tag: %d\n", tag);
 
             switch (ConstantPoolInfoTag.valueOf(tag)) {
             case ConstantClass: {
                 ConstantClassInfo cc = new ConstantClassInfo();
-                cc.read(tag, FReader);
-                fItems.add(cc);
+                cc.read(tag, reader);
+                items.add(cc);
                 break;
             }
             case ConstantString: {
                 ConstantStringInfo cc = new ConstantStringInfo();
-                cc.read(tag, FReader);
-                fItems.add(cc);
+                cc.read(tag, reader);
+                items.add(cc);
                 break;
             }
             case ConstantFieldref: {
                 ConstantFieldrefInfo cc = new ConstantFieldrefInfo();
-                cc.read(tag, FReader);
-                fItems.add(cc);
+                cc.read(tag, reader);
+                items.add(cc);
                 break;
             }
             case ConstantMethodref: {
                 ConstantMethodrefInfo cc = new ConstantMethodrefInfo();
-                cc.read(tag, FReader);
-                fItems.add(cc);
+                cc.read(tag, reader);
+                items.add(cc);
                 break;
             }
             case ConstantInterfaceMethodref: {
                 ConstantInterfaceMethodrefInfo cc = new ConstantInterfaceMethodrefInfo();
-                cc.read(tag, FReader);
-                fItems.add(cc);
+                cc.read(tag, reader);
+                items.add(cc);
                 break;
             }
             case ConstantInteger: {
                 ConstantIntegerInfo cc = new ConstantIntegerInfo();
-                cc.read(tag, FReader);
-                fItems.add(cc);
+                cc.read(tag, reader);
+                items.add(cc);
                 break;
             }
             case ConstantFloat: {
                 ConstantFloatInfo cc = new ConstantFloatInfo();
-                cc.read(tag, FReader);
-                fItems.add(cc);
+                cc.read(tag, reader);
+                items.add(cc);
                 break;
             }
             case ConstantLong: {
                 ConstantLongInfo cc = new ConstantLongInfo();
-                cc.read(tag, FReader);
-                fItems.add(cc);
+                cc.read(tag, reader);
+                items.add(cc);
                 // longs take up two entries in the pool table
                 count++;
-                fItems.add(cc);
+                items.add(cc);
                 break;
             }
             case ConstantDouble: {
                 ConstantDoubleInfo cc = new ConstantDoubleInfo();
-                cc.read(tag, FReader);
-                fItems.add(cc);
+                cc.read(tag, reader);
+                items.add(cc);
                 // so do doubles
                 count++;
-                fItems.add(cc);
+                items.add(cc);
                 break;
             }
             case ConstantNameAndType: {
                 ConstantNameAndTypeInfo cc = new ConstantNameAndTypeInfo();
-                cc.read(tag, FReader);
-                fItems.add(cc);
+                cc.read(tag, reader);
+                items.add(cc);
                 break;
             }
             case ConstantUtf8: {
                 ConstantUtf8Info cc = new ConstantUtf8Info();
-                cc.read(tag, FReader);
-                fItems.add(cc);
+                cc.read(tag, reader);
+                items.add(cc);
                 break;
             }
             default:
@@ -1285,8 +1272,8 @@ System.err.printf("tag: %d\n", tag);
             count++;
         }
 
-        for (ConstantPoolInfo cc : fItems) {
-            cc.resolve(fItems);
+        for (ConstantPoolInfo cc : items) {
+            cc.resolve(items);
         }
     }
 
@@ -1295,12 +1282,12 @@ System.err.printf("tag: %d\n", tag);
         // i dont do any error checking here except bare minimum!
 
         // write the number of constant pool entries
-        Common.writeShort(writer, fMaxItems + 1);
+        Common.writeShort(writer, maxItems + 1);
         int count = 0;
 
         // goes from 1 -> constantpoolcount - 1
-        while (count < fMaxItems) {
-            ConstantPoolInfo Item = fItems.get(count);
+        while (count < maxItems) {
+            ConstantPoolInfo Item = items.get(count);
 
             switch (ConstantPoolInfoTag.valueOf(Item.tag)) {
             case ConstantClass: {
@@ -1385,134 +1372,130 @@ System.err.printf("tag: %d\n", tag);
     }
 
     public int getMaxItems() {
-        return fMaxItems;
+        return maxItems;
     }
 
     public ConstantPoolInfo getItem(int index) {
-        if (fItems != null && index < fMaxItems) {
-            return fItems.get(index);
+        if (items != null && index < maxItems) {
+            return items.get(index);
         }
 System.err.printf("index: %04x\n", index);
 new Exception("*** DUMMY ***").printStackTrace(System.err);
         return null;
     }
 
-    public int Add(ConstantPoolInfo NewItem) {
-        fItems.add(NewItem);
-        fMaxItems++;
-        return (fItems.size() - 1);
+    public int add(ConstantPoolInfo newItem) {
+        items.add(newItem);
+        maxItems++;
+        return (items.size() - 1);
     }
 }
 
-class TInterfaces {
-    DataInput FReader;
+class Interfaces {
+    DataInput reader;
+    List<InterfaceInfo> items = null;
+    int maxItems = 0;
 
-    ArrayList<InterfaceInfo> FItems = null;
+    public Interfaces(DataInput reader, ConstantPool constantPool) throws IOException {
+        this.reader = reader;
 
-    int FMaxItems = 0;
-
-    public TInterfaces(DataInput Reader, TConstantPool ConstantPool) throws IOException {
-        FReader = Reader;
-
-        FMaxItems = Common.readShort(FReader) - 1;
-        FItems = new ArrayList<InterfaceInfo>();
+        maxItems = Common.readShort(reader) - 1;
+        items = new ArrayList<InterfaceInfo>();
         int count = 0;
 
         // goes from 1 -> interfacecount - 1
-        while (count <= FMaxItems) {
-            InterfaceInfo ii = new InterfaceInfo(FReader, ConstantPool);
-            FItems.add(ii);
+        while (count <= maxItems) {
+            InterfaceInfo ii = new InterfaceInfo(reader, constantPool);
+            items.add(ii);
 
             count++;
         }
     }
 
-    public void Write(DataOutput Writer) throws IOException {
-        Common.writeShort(Writer, FMaxItems + 1);
+    public void write(DataOutput writer) throws IOException {
+        Common.writeShort(writer, maxItems + 1);
 
         int count = 0;
 
         // goes from 1 -> interfacecount - 1
-        while (count <= FMaxItems) {
-            InterfaceInfo ii = FItems.get(count);
-            ii.write(Writer);
+        while (count <= maxItems) {
+            InterfaceInfo ii = items.get(count);
+            ii.write(writer);
 
             count++;
         }
     }
 
-    public int MaxItems() {
-        return FMaxItems;
+    public int maxItems() {
+        return maxItems;
     }
 
-    public InterfaceInfo Item(int Index) {
-        if (Index >= 0 && Index < FItems.size())
-            return FItems.get(Index);
+    public InterfaceInfo item(int index) {
+        if (index >= 0 && index < items.size())
+            return items.get(index);
 
         // TODO: fix this fucking gay piece of shit
-        return FItems.get(0);
+        return items.get(0);
     }
 
-    public ArrayList<InterfaceInfo> getItems() {
-        return FItems;
+    public List<InterfaceInfo> getItems() {
+        return items;
     }
 }
 
-class TFields {
-    DataInput FReader;
+class Fields {
+    DataInput reader;
+    List<FieldInfo> items = null;
+    int maxItems = 0;
 
-    ArrayList<FieldInfo> FItems = null;
+    public Fields(DataInput reader, ConstantPool constantPool) throws IOException {
+        this.reader = reader;
 
-    int FMaxItems = 0;
-
-    public TFields(DataInput Reader, TConstantPool ConstantPool) throws IOException {
-        FReader = Reader;
-
-        FMaxItems = Common.readShort(FReader);
-        FItems = new ArrayList<FieldInfo>();
+        maxItems = Common.readShort(reader);
+        items = new ArrayList<FieldInfo>();
         int count = 0;
 
         // goes from 1 -> fieldcount - 1
-        while (count < FMaxItems) {
-            FieldInfo fi = new FieldInfo(FReader, ConstantPool);
-            FItems.add(fi);
+        while (count < maxItems) {
+            FieldInfo fi = new FieldInfo(reader, constantPool);
+            items.add(fi);
 
             count++;
         }
     }
 
-    public void Write(DataOutput Writer) throws IOException {
-        Common.writeShort(Writer, FMaxItems);
+    public void write(DataOutput writer) throws IOException {
+        Common.writeShort(writer, maxItems);
 
         int count = 0;
 
         // goes from 1 -> fieldcount - 1
-        while (count < FMaxItems) {
-            FieldInfo fi = FItems.get(count);
-            fi.write(Writer);
+        while (count < maxItems) {
+            FieldInfo fi = items.get(count);
+            fi.write(writer);
 
             count++;
         }
     }
 
-    public int MaxItems() {
-        return FMaxItems;
+    public int maxItems() {
+        return maxItems;
     }
 
     public FieldInfo Item(int Index) {
-        if (FItems != null && Index < FMaxItems)
-            return FItems.get(Index);
+        if (items != null && Index < maxItems)
+            return items.get(Index);
 
         return null;
     }
 
-    public ArrayList<FieldInfo> getItems() {
-        return FItems;
+    public List<FieldInfo> getItems() {
+        return items;
     }
 
-    public boolean FieldNameExists(String Name) {
-        for (int i = 0; i < FMaxItems; i++) {
-            if (Name == FItems.get(i).getName().Value)
+    public boolean fieldNameExists(String name) {
+        for (int i = 0; i < maxItems; i++) {
+            if (name == items.get(i).getName().value)
                 return true;
         }
 
@@ -1520,61 +1503,59 @@ class TFields {
     }
 }
 
-class TMethods {
-    DataInput FReader;
+class Methods {
+    DataInput reader;
+    List<MethodInfo> items = null;
+    int maxItems = 0;
 
-    ArrayList<MethodInfo> FItems = null;
+    public Methods(DataInput reader, ConstantPool constantPool) throws IOException {
+        this.reader = reader;
 
-    int FMaxItems = 0;
-
-    public TMethods(DataInput Reader, TConstantPool ConstantPool) throws IOException {
-        FReader = Reader;
-
-        FMaxItems = Common.readShort(FReader);
-        FItems = new ArrayList<MethodInfo>();
+        maxItems = Common.readShort(reader);
+        items = new ArrayList<MethodInfo>();
         int count = 0;
 
         // goes from 1 -> fieldcount - 1
-        while (count < FMaxItems) {
-            MethodInfo mi = new MethodInfo(FReader, ConstantPool);
-            FItems.add(mi);
+        while (count < maxItems) {
+            MethodInfo mi = new MethodInfo(reader, constantPool);
+            items.add(mi);
 
             count++;
         }
     }
 
-    public void Write(DataOutput Writer) throws IOException {
-        Common.writeShort(Writer, FMaxItems);
+    public void write(DataOutput writer) throws IOException {
+        Common.writeShort(writer, maxItems);
 
         int count = 0;
 
         // goes from 1 -> fieldcount - 1
-        while (count < FMaxItems) {
-            MethodInfo mi = FItems.get(count);
-            mi.write(Writer);
+        while (count < maxItems) {
+            MethodInfo mi = items.get(count);
+            mi.write(writer);
 
             count++;
         }
     }
 
-    public int MaxItems() {
-        return FMaxItems;
+    public int maxItems() {
+        return maxItems;
     }
 
-    public MethodInfo Item(int Index) {
-        if (FItems != null && Index < FMaxItems)
-            return FItems.get(Index);
+    public MethodInfo Item(int index) {
+        if (items != null && index < maxItems)
+            return items.get(index);
 
         return null;
     }
 
-    public ArrayList<MethodInfo> getItems() {
-        return FItems;
+    public List<MethodInfo> getItems() {
+        return items;
     }
 
-    public boolean MethodNameExists(String Name) {
-        for (int i = 0; i < FMaxItems; i++) {
-            if (Name == FItems.get(i).getName().Value)
+    public boolean methodNameExists(String name) {
+        for (int i = 0; i < maxItems; i++) {
+            if (name == items.get(i).getName().value)
                 return true;
         }
 
@@ -1583,85 +1564,83 @@ class TMethods {
 
 }
 
-class TAttributes {
-    DataInput FReader;
+class Attributes {
+    DataInput reader;
+    List<Object> items = null;
+    int maxItems = 0;
 
-    ArrayList<Object> FItems = null;
+    public Attributes(DataInput reader, ConstantPool constantPool) throws IOException {
+        this.reader = reader;
 
-    int FMaxItems = 0;
-
-    public TAttributes(DataInput Reader, TConstantPool ConstantPool) throws IOException {
-        FReader = Reader;
-
-        FMaxItems = Common.readShort(FReader) - 1;
-        FItems = new ArrayList<Object>();
+        maxItems = Common.readShort(reader) - 1;
+        items = new ArrayList<Object>();
         int count = 0;
 
         // goes from 1 -> attributescount - 1
-        while (count <= FMaxItems) {
-            int NameIndex = Common.readShort(FReader);
-            NameIndex--;
-            ConstantUtf8Info Name = (ConstantUtf8Info) ConstantPool.getItem(NameIndex);
+        while (count <= maxItems) {
+            int nameIndex = Common.readShort(reader);
+            nameIndex--;
+            ConstantUtf8Info Name = (ConstantUtf8Info) constantPool.getItem(nameIndex);
 
-            switch (AttributeType.valueOf(Name.Value)) {
+            switch (AttributeType.valueOf(Name.value)) {
             case Code: {
-                CodeAttributeInfo ai = new CodeAttributeInfo(NameIndex, FReader, ConstantPool);
+                CodeAttributeInfo ai = new CodeAttributeInfo(nameIndex, reader, constantPool);
 
-                FItems.add(ai);
+                items.add(ai);
                 break;
             }
             case ConstantValue: {
-                ConstantValueAttributeInfo ai = new ConstantValueAttributeInfo(NameIndex, FReader, ConstantPool);
+                ConstantValueAttributeInfo ai = new ConstantValueAttributeInfo(nameIndex, reader, constantPool);
 
-                FItems.add(ai);
+                items.add(ai);
                 break;
             }
             case Deprecated: {
-                DeprecatedAttributeInfo ai = new DeprecatedAttributeInfo(NameIndex, FReader, ConstantPool);
+                DeprecatedAttributeInfo ai = new DeprecatedAttributeInfo(nameIndex, reader, constantPool);
 
-                FItems.add(ai);
+                items.add(ai);
                 break;
             }
             case Exceptions: {
-                ExceptionsAttributeInfo ai = new ExceptionsAttributeInfo(NameIndex, FReader, ConstantPool);
+                ExceptionsAttributeInfo ai = new ExceptionsAttributeInfo(nameIndex, reader, constantPool);
 
-                FItems.add(ai);
+                items.add(ai);
                 break;
             }
             case InnerClasses: {
-                InnerClassesAttributeInfo ai = new InnerClassesAttributeInfo(NameIndex, FReader, ConstantPool);
+                InnerClassesAttributeInfo ai = new InnerClassesAttributeInfo(nameIndex, reader, constantPool);
 
-                FItems.add(ai);
+                items.add(ai);
                 break;
             }
             case LineNumberTable: {
-                LineNumberAttributeInfo ai = new LineNumberAttributeInfo(NameIndex, FReader, ConstantPool);
+                LineNumberAttributeInfo ai = new LineNumberAttributeInfo(nameIndex, reader, constantPool);
 
-                FItems.add(ai);
+                items.add(ai);
                 break;
             }
             case LocalVariableTable: {
-                LocalVariablesAttributeInfo ai = new LocalVariablesAttributeInfo(NameIndex, FReader, ConstantPool);
+                LocalVariablesAttributeInfo ai = new LocalVariablesAttributeInfo(nameIndex, reader, constantPool);
 
-                FItems.add(ai);
+                items.add(ai);
                 break;
             }
             case SourceFile: {
-                SourceFileAttributeInfo ai = new SourceFileAttributeInfo(NameIndex, FReader, ConstantPool);
+                SourceFileAttributeInfo ai = new SourceFileAttributeInfo(nameIndex, reader, constantPool);
 
-                FItems.add(ai);
+                items.add(ai);
                 break;
             }
             case Synthetic: {
-                SyntheticAttributeInfo ai = new SyntheticAttributeInfo(NameIndex, FReader, ConstantPool);
+                SyntheticAttributeInfo ai = new SyntheticAttributeInfo(nameIndex, reader, constantPool);
 
-                FItems.add(ai);
+                items.add(ai);
                 break;
             }
             default: {
-                AttributeInfo ai = new UnknownAttributeInfo(NameIndex, FReader, ConstantPool);
+                AttributeInfo ai = new UnknownAttributeInfo(nameIndex, reader, constantPool);
 
-                FItems.add(ai);
+                items.add(ai);
                 break;
             }
             }
@@ -1670,22 +1649,22 @@ class TAttributes {
         }
     }
 
-    public void Write(DataOutput Writer) throws IOException {
-        Common.writeShort(Writer, FMaxItems + 1);
+    public void write(DataOutput writer) throws IOException {
+        Common.writeShort(writer, maxItems + 1);
 
         int count = 0;
 
         // goes from 1 -> attributescount - 1
-        while (count <= FMaxItems) {
-            AttributeInfo Item = (AttributeInfo) FItems.get(count);
+        while (count <= maxItems) {
+            AttributeInfo item = (AttributeInfo) items.get(count);
 
-            Item.write(Writer);
+            item.write(writer);
 
             count++;
         }
     }
 
-    public ArrayList<Object> getItems() {
-        return FItems;
+    public List<Object> getItems() {
+        return items;
     }
 }
