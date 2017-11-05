@@ -60,7 +60,7 @@ class DeObfuscator {
     public boolean doRename(String name) {
         List<String> bad_names;
 
-        bad_names = new ArrayList<String>();
+        bad_names = new ArrayList<>();
         bad_names.add("for");
         bad_names.add("char");
         bad_names.add("void");
@@ -110,7 +110,7 @@ class DeObfuscator {
             return null;
 
         // add the class name to the head of the changelist
-        changeList = new ArrayList<Object>();
+        changeList = new ArrayList<>();
         changeList.add(classFile.getThisClassName());
 
         String originalClassName = classFile.getThisClassName();
@@ -519,10 +519,10 @@ class DeObfuscator {
     }
 
     public List<File> deObfuscateAll(RenameDatabase renameStore) {
-        classFiles = new ArrayList<ClassFile>();
+        classFiles = new ArrayList<>();
 //        interfaces = new List<TInterfaces>();
-        List<List<Object>> masterChangeList = new ArrayList<List<Object>>();
-        List<File> newFileNameList = new ArrayList<File>();
+        List<List<Object>> masterChangeList = new ArrayList<>();
+        List<File> newFileNameList = new ArrayList<>();
         int curr_progress = 0;
 
         progress.setProgress(0);
@@ -1181,7 +1181,7 @@ class ConstantPool {
 
         maxItems = Common.readShort(reader) - 1;
 System.err.printf("maxItems: %d\n", maxItems);
-        items = new ArrayList<ConstantPoolInfo>();
+        items = new ArrayList<>();
         int count = 0;
 
         // goes from 1 -> constantpoolcount - 1
@@ -1400,7 +1400,7 @@ class Interfaces {
         this.reader = reader;
 
         maxItems = Common.readShort(reader) - 1;
-        items = new ArrayList<InterfaceInfo>();
+        items = new ArrayList<>();
         int count = 0;
 
         // goes from 1 -> interfacecount - 1
@@ -1452,7 +1452,7 @@ class Fields {
         this.reader = reader;
 
         maxItems = Common.readShort(reader);
-        items = new ArrayList<FieldInfo>();
+        items = new ArrayList<>();
         int count = 0;
 
         // goes from 1 -> fieldcount - 1
@@ -1512,7 +1512,7 @@ class Methods {
         this.reader = reader;
 
         maxItems = Common.readShort(reader);
-        items = new ArrayList<MethodInfo>();
+        items = new ArrayList<>();
         int count = 0;
 
         // goes from 1 -> fieldcount - 1
@@ -1573,7 +1573,7 @@ class Attributes {
         this.reader = reader;
 
         maxItems = Common.readShort(reader) - 1;
-        items = new ArrayList<Object>();
+        items = new ArrayList<>();
         int count = 0;
 
         // goes from 1 -> attributescount - 1

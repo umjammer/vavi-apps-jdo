@@ -168,7 +168,7 @@ public class MainForm extends JFrame {
         public void actionPerformed(ActionEvent e) {
             if (openFileDialog.showOpenDialog(null) == JOptionPane.OK_OPTION) {
                 if (files == null) {
-                    files = new ArrayList<File>();
+                    files = new ArrayList<>();
                 }
                 for (File fn : openFileDialog.getSelectedFiles()) {
                     files.add(fn);

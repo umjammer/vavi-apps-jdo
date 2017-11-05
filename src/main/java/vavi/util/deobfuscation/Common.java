@@ -37,19 +37,19 @@ enum AccessFlags {
 }
 
 enum FieldAccessFlags {
-    // Declared public; may be accessed from outside its package.
+    /** Declared public; may be accessed from outside its package. */
     ACC_PUBLIC(0x0001),
-    // Declared private; usable only within the defining class.
+    /** Declared private; usable only within the defining class. */
     ACC_PRIVATE(0x0002),
-    // Declared protected; may be accessed within subclasses.
+    /** Declared protected; may be accessed within subclasses. */
     ACC_PROTECTED(0x0004),
-    // Declared static.
+    /** Declared static. */
     ACC_STATIC(0x0008),
-    // Declared final; no further assignment after initialization.
+    /** Declared final; no further assignment after initialization. */
     ACC_FINAL(0x0010),
-    // Declared volatile; cannot be cached.
+    /** Declared volatile; cannot be cached. */
     ACC_VOLATILE(0x0040),
-    // Declared transient; not written or read by a persistent object manager.
+    /** Declared transient; not written or read by a persistent object manager. */
     ACC_TRANSIENT(0x0080);
     int value;
 
@@ -1608,16 +1608,16 @@ class RenameDatabase {
     private Map<String, String> renameClass = null;
 
     public RenameDatabase() {
-        renameMethods = new HashMap<String, List<RenameData>>();
-        renameFields = new HashMap<String, List<RenameData>>();
-        renameClass = new HashMap<String, String>();
+        renameMethods = new HashMap<>();
+        renameFields = new HashMap<>();
+        renameClass = new HashMap<>();
     }
 
     public void addRename(Map<String, List<RenameData>> destTable, String className, String oldDescriptor, String oldName, String newDescriptor, String newName) {
         List<RenameData> al = destTable.get(className);
 
         if (al == null) {
-            al = new ArrayList<RenameData>();
+            al = new ArrayList<>();
             destTable.put(className, al);
         } else {
             // make sure it doesnt already exist
