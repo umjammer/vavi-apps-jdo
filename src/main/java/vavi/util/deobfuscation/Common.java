@@ -1693,12 +1693,12 @@ class RenameDatabase {
 
         return null;
     }
-   
+
     // serialize this to read in .xml file ?
 //     public boolean ReadFromFile(String FileName) {
 //         return false;
 //     }
-    
+
 }
 
 class Common {

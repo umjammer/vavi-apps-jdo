@@ -65,29 +65,29 @@ public class MainForm extends JFrame {
         this.Progress = new JProgressBar();
         this.CleanupCheckBox = new JCheckBox();
         this.setLayout(new BorderLayout());
-        // 
+        //
         // ClassFileTextBox
-        // 
+        //
         this.ClassFileTextBox.setName("ClassFileTextBox");
-        // 
+        //
         // label1
-        // 
+        //
         this.label1.setName("label1");
         this.label1.setText("Add Class:");
-        // 
+        //
         // ButtonFileBrowse
-        // 
+        //
         this.ButtonFileBrowse.setName("ButtonFileBrowse");
         this.ButtonFileBrowse.setText("...");
         this.ButtonFileBrowse.addActionListener(this.button1_Click);
-        // 
+        //
         // TreeClassView
-        // 
+        //
         this.TreeClassView.setName("TreeClassView");
         this.TreeClassView.addMouseListener(this.TreeClassView_NodeMouseClick);
-        // 
+        //
         // OpenFileDialog
-        // 
+        //
         this.openFileDialog.setFileFilter(new FileFilter() {
             @Override
             public boolean accept(File f) {
@@ -99,44 +99,44 @@ public class MainForm extends JFrame {
             }
         });
         this.openFileDialog.setMultiSelectionEnabled(true);
-        // 
+        //
         // ProcessButton
-        // 
+        //
         this.ProcessButton.setName("ProcessButton");
         this.ProcessButton.setText("Deobfuscate");
         this.ProcessButton.addActionListener(this.ProcessButton_Click);
-        // 
+        //
         // ToolTip
-        // 
+        //
 //        this.ToolTip.IsBalloon(true);
-        // 
+        //
         // RenameClassCheckBox
-        // 
+        //
         this.RenameClassCheckBox.setSelected(true);
         this.RenameClassCheckBox.setName("RenameClassCheckBox");
         this.RenameClassCheckBox.setText("Rename Classes");
-        // 
+        //
         // SmartRenameMethods
-        // 
+        //
         this.SmartRenameMethods.setSelected(true);
         this.SmartRenameMethods.setEnabled(false);
         this.SmartRenameMethods.setName("SmartRenameMethods");
         this.SmartRenameMethods.setText("Smart Rename Methods");
-        // 
+        //
         // Progress
-        // 
+        //
         this.Progress.setName("Progress");
         this.Progress.setVisible(false);
         this.Progress.setPreferredSize(new Dimension(32, Progress.getPreferredSize().height));
-        // 
+        //
         // CleanupCheckBox
-        // 
+        //
         this.CleanupCheckBox.setSelected(true);
         this.CleanupCheckBox.setName("CleanupCheckBox");
         this.CleanupCheckBox.setText("Remove Old Files");
-        // 
+        //
         // MainForm
-        // 
+        //
         this.setPreferredSize(new Dimension(640, 480));
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         panel.add(this.label1);
@@ -173,7 +173,7 @@ public class MainForm extends JFrame {
                 for (File fn : openFileDialog.getSelectedFiles()) {
                     files.add(fn);
                 }
-    
+
                 updateTree();
 
                 TreeClassView.expandRow(0);
@@ -315,17 +315,17 @@ public class MainForm extends JFrame {
         public void actionPerformed(ActionEvent e) {
             if (files == null)
                 return;
-    
+
             deObfuscator = new DeObfuscator(files);
-    
+
             deObfuscator.setCleanup(CleanupCheckBox.isSelected());
             deObfuscator.setRenameClasses(RenameClassCheckBox.isSelected());
-    
+
             Progress.setMaximum(files.size());
             Progress.setVisible(true);
-    
+
             DeObfuscator.progress = new ProgressMonitor(Progress, null, null, 0, 100);
-    
+
             // update the classfile with the new deobfuscated version
             List<File> newFileList = deObfuscator.deObfuscateAll(renameStore);
             if (newFileList != null) {
@@ -333,7 +333,7 @@ public class MainForm extends JFrame {
                 files = newFileList;
             } else
                 JOptionPane.showConfirmDialog(null, "Error!!!", "DeObfuscator", JOptionPane.DEFAULT_OPTION);
-    
+
             Progress.setVisible(false);
             renameStore = new RenameDatabase();
             updateTree();
@@ -354,39 +354,39 @@ public class MainForm extends JFrame {
                 while (pn.getParent() != null) {
                     pn = pn.getParent();
                 }
-    
+
                 // get trailing node
                 DefaultMutableTreeNode tn = ((DefaultMutableTreeNode) e.getSource());
                 while (tn.getChildCount() > 0) {
                     tn = (DefaultMutableTreeNode) tn.getChildAt(0);
                 }
-    
+
                 String class_name = pn.toString(); // classname
-    
+
                 Object[] sl = tn.getUserObjectPath();
                 String type = (String) sl[1];
                 String old_name = tn.getParent().toString();
-    
+
                 if (class_name == null || type == null || old_name == null) {
                     return;
                 }
-    
+
                 // check which subsection we are in, so we can add it to the right
                 // list
                 Object result = JOptionPane.showInputDialog(null, "Change Name...", "ChangeName", JOptionPane.YES_NO_CANCEL_OPTION, null, null, ((TreeNode) e.getSource()).toString());
                 if ((type == "Methods" || type == "Fields") && // section
                     (result != null)) {
                     String old_descriptor = (String) sl[3];
-    
+
                     if (old_descriptor == null)
                         return;
-    
+
                     if (type == "Methods") {
                         renameStore.addRenameMethod(class_name, old_descriptor, old_name, old_descriptor, (String) result);
                     } else if (type == "Fields") {
                         renameStore.addRenameField(class_name, old_descriptor, old_name, old_descriptor, (String) result);
                     }
-    
+
                     // update the tree without reloading it
                     ((DefaultMutableTreeNode) tn.getParent()).setUserObject(result);
 //                    tn.getParent().ToolTipText = "was '" + tn.getParent().Tag.ToString() + "'";
@@ -395,20 +395,20 @@ public class MainForm extends JFrame {
             } else if (e.getButton() == MouseEvent.BUTTON2 && ((TreeNode) e.getSource()).getParent() == null) {
                 ChangeName changeName = new ChangeName();
                 String[] s = ((TreeNode) e.getSource()).toString().split(":");
-    
+
                 String old_name = s[0].trim();
                 String old_descriptor = s[1].trim();
-    
+
                 if (s.length == 0)
                     return;
-    
+
                 changeName.nameBox.setText(old_name);
-    
+
                 // change the class name, since its a root node
                 if (JOptionPane.showInputDialog(null, "Change Name...", "ChangeName", JOptionPane.OK_CANCEL_OPTION) != null) {
                     String new_name_and_type = changeName.nameBox.getText() + " : " + old_descriptor;
                     renameStore.addRenameClass(((MutableTreeNode) e.getSource()).toString(), new_name_and_type);
-    
+
 //                    ((TreeNode) e.getSource()).setBackGround(Color.blue);
                     ((DefaultMutableTreeNode) e.getSource()).setUserObject(new_name_and_type);
 //                    ((TreeNode) e.getSource()).ToolTipText = "was '" + e.Node.Tag.ToString() + "'";

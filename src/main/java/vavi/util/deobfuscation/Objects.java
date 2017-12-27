@@ -476,7 +476,7 @@ class DeObfuscator {
         // 3. if found, for all methods in the deobfuscated interface, find
         // corresponding entry in
         // current classes change list, and update it
-        //   
+        //
         ClassFile classFile = classFiles.get(index);
 
         // for each class file, check each of its interfaces
@@ -1104,9 +1104,9 @@ e.printStackTrace(System.err);
 
 }
 
-// 
+//
 // CLASS CHANGE RECORD
-// 
+//
 // These classes are used to keep track of all the changes i make during
 // deobfuscation
 // of a single class. They are then used to iterate through all the rest of the

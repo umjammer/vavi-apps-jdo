@@ -17,18 +17,18 @@ public class ChangeName extends JDialog {
         this.nameBox = new JTextField();
         this.cancelButton = new JButton();
         this.setLayout(null);
-        // 
+        //
         // label1
-        // 
+        //
 //        this.label1.AutoSize = true;
         this.label1.setLocation(11, 22);
         this.label1.setName("label1");
         this.label1.setSize(new Dimension(101, 13));
 //        this.label1.setTabIndex = 0;
         this.label1.setText("Component Name : ");
-        // 
+        //
         // SaveButton
-        // 
+        //
 //        this.SaveButton.DialogResult = System.Windows.Forms.DialogResult.OK;
         this.saveButton.setLocation(368, 45);
         this.saveButton.setName("SaveButton");
@@ -36,16 +36,16 @@ public class ChangeName extends JDialog {
 //        this.SaveButton.TabIndex = 2;
         this.saveButton.setText("&Save");
 //        this.SaveButton.UseVisualStyleBackColor = true;
-        // 
+        //
         // NameBox
-        // 
+        //
         this.nameBox.setLocation(119, 19);
         this.nameBox.setName("NameBox");
         this.nameBox.setSize(new Dimension(334, 20));
 //        this.NameBox.TabIndex = 3;
-        // 
+        //
         // CancelButton
-        // 
+        //
 //        this.CancelButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
         this.cancelButton.setLocation(270, 45);
         this.cancelButton.setName("CancelButton");
@@ -53,9 +53,9 @@ public class ChangeName extends JDialog {
 //        this.CancelButton.TabIndex = 4;
         this.cancelButton.setText("&Cancel");
 //        this.CancelButton.UseVisualStyleBackColor = true;
-        // 
+        //
         // ChangeName
-        // 
+        //
 //        this.AcceptButton = this.SaveButton;
 //        this.AutoScaleDimensions = new DimensionF(6F, 13F);
 //        this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
