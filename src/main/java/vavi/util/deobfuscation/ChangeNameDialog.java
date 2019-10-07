@@ -9,9 +9,9 @@ import javax.swing.JLabel;
 import javax.swing.JTextField;
 
 
-public class ChangeName extends JDialog {
+public class ChangeNameDialog extends JDialog {
 
-    public ChangeName() {
+    public ChangeNameDialog() {
         this.label1 = new JLabel();
         this.saveButton = new JButton();
         this.nameBox = new JTextField();
@@ -74,7 +74,10 @@ public class ChangeName extends JDialog {
     }
 
     private JLabel label1;
+
     private JButton saveButton;
+
     public JTextField nameBox;
+
     private JButton cancelButton;
 }

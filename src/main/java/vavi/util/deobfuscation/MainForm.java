@@ -27,64 +27,83 @@ import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JTree;
-import javax.swing.ProgressMonitor;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.MutableTreeNode;
 import javax.swing.tree.TreeNode;
 
+import vavi.util.deobfuscation.common.ConstantPoolInfo;
+import vavi.util.deobfuscation.common.RenameData;
+import vavi.util.deobfuscation.common.RenameDatabase;
+import vavi.util.deobfuscation.common.constantpoolinfo.ConstantClassInfo;
+import vavi.util.deobfuscation.common.constantpoolinfo.ConstantFieldrefInfo;
+import vavi.util.deobfuscation.common.constantpoolinfo.ConstantInterfaceMethodrefInfo;
+import vavi.util.deobfuscation.common.constantpoolinfo.ConstantMethodrefInfo;
+import vavi.util.deobfuscation.common.constantpoolinfo.ConstantPoolMethodInfo;
+import vavi.util.deobfuscation.common.constantpoolinfo.ConstantPoolVariableInfo;
+import vavi.util.deobfuscation.common.info.FieldInfo;
+import vavi.util.deobfuscation.common.info.InterfaceInfo;
+import vavi.util.deobfuscation.common.info.MethodInfo;
+import vavi.util.deobfuscation.objects.ClassFile;
+import vavi.util.deobfuscation.objects.DeObfuscator;
+
 
 public class MainForm extends JFrame {
 
     DeObfuscator deObfuscator = null;
+
     List<File> files = null;
+
     RenameDatabase renameStore = null;
+
     private JLabel label1;
+
     private JFileChooser openFileDialog;
-    private JTextField ClassFileTextBox;
-    private JButton ButtonFileBrowse;
-    private JTree TreeClassView;
-    private JButton ProcessButton;
-//    private JToolTip ToolTip;
-    private JCheckBox RenameClassCheckBox;
-    private JCheckBox SmartRenameMethods;
-    private JProgressBar Progress;
+
+    private JTextField classFileTextField;
+
+    private JButton fileBrowseButton;
+
+    private JTree classTreeView;
+
+    private JButton processButton;
+
+//    private JToolTip toolTip;
+
+    private JCheckBox renameClassCheckBox;
+
+    private JCheckBox smartRenameMethods;
+
+    private JProgressBar progressBar;
+
     private JCheckBox CleanupCheckBox;
 
     public MainForm() {
-        this.ClassFileTextBox = new JTextField(32);
+        this.classFileTextField = new JTextField(32);
         this.label1 = new JLabel();
-        this.ButtonFileBrowse = new JButton();
-        this.TreeClassView = new JTree();
+        this.fileBrowseButton = new JButton();
+        this.classTreeView = new JTree();
         this.openFileDialog = new JFileChooser();
-        this.ProcessButton = new JButton();
-//        this.ToolTip = new JToolTip(this.components);
-        this.RenameClassCheckBox = new JCheckBox();
-        this.SmartRenameMethods = new JCheckBox();
-        this.Progress = new JProgressBar();
+        this.processButton = new JButton();
+//        this.toolTip = new JToolTip(this.components);
+        this.renameClassCheckBox = new JCheckBox();
+        this.smartRenameMethods = new JCheckBox();
+        this.progressBar = new JProgressBar();
         this.CleanupCheckBox = new JCheckBox();
         this.setLayout(new BorderLayout());
         //
-        // ClassFileTextBox
-        //
-        this.ClassFileTextBox.setName("ClassFileTextBox");
-        //
-        // label1
+        this.classFileTextField.setName("ClassFileTextBox");
         //
         this.label1.setName("label1");
         this.label1.setText("Add Class:");
         //
-        // ButtonFileBrowse
+        this.fileBrowseButton.setName("ButtonFileBrowse");
+        this.fileBrowseButton.setText("...");
+        this.fileBrowseButton.addActionListener(this.button1_Click);
         //
-        this.ButtonFileBrowse.setName("ButtonFileBrowse");
-        this.ButtonFileBrowse.setText("...");
-        this.ButtonFileBrowse.addActionListener(this.button1_Click);
-        //
-        // TreeClassView
-        //
-        this.TreeClassView.setName("TreeClassView");
-        this.TreeClassView.addMouseListener(this.TreeClassView_NodeMouseClick);
+        this.classTreeView.setName("TreeClassView");
+        this.classTreeView.addMouseListener(this.TreeClassView_NodeMouseClick);
         //
         // OpenFileDialog
         //
@@ -93,6 +112,7 @@ public class MainForm extends JFrame {
             public boolean accept(File f) {
                 return f.getName().matches(".+\\.class");
             }
+
             @Override
             public String getDescription() {
                 return "Class Files";
@@ -100,36 +120,24 @@ public class MainForm extends JFrame {
         });
         this.openFileDialog.setMultiSelectionEnabled(true);
         //
-        // ProcessButton
+        this.processButton.setName("ProcessButton");
+        this.processButton.setText("Deobfuscate");
+        this.processButton.addActionListener(this.ProcessButton_Click);
         //
-        this.ProcessButton.setName("ProcessButton");
-        this.ProcessButton.setText("Deobfuscate");
-        this.ProcessButton.addActionListener(this.ProcessButton_Click);
+//        this.toolTip.isBalloon(true);
         //
-        // ToolTip
+        this.renameClassCheckBox.setSelected(true);
+        this.renameClassCheckBox.setName("RenameClassCheckBox");
+        this.renameClassCheckBox.setText("Rename Classes");
         //
-//        this.ToolTip.IsBalloon(true);
+        this.smartRenameMethods.setSelected(true);
+        this.smartRenameMethods.setEnabled(false);
+        this.smartRenameMethods.setName("SmartRenameMethods");
+        this.smartRenameMethods.setText("Smart Rename Methods");
         //
-        // RenameClassCheckBox
-        //
-        this.RenameClassCheckBox.setSelected(true);
-        this.RenameClassCheckBox.setName("RenameClassCheckBox");
-        this.RenameClassCheckBox.setText("Rename Classes");
-        //
-        // SmartRenameMethods
-        //
-        this.SmartRenameMethods.setSelected(true);
-        this.SmartRenameMethods.setEnabled(false);
-        this.SmartRenameMethods.setName("SmartRenameMethods");
-        this.SmartRenameMethods.setText("Smart Rename Methods");
-        //
-        // Progress
-        //
-        this.Progress.setName("Progress");
-        this.Progress.setVisible(false);
-        this.Progress.setPreferredSize(new Dimension(32, Progress.getPreferredSize().height));
-        //
-        // CleanupCheckBox
+        this.progressBar.setName("Progress");
+        this.progressBar.setVisible(false);
+        this.progressBar.setPreferredSize(new Dimension(32, progressBar.getPreferredSize().height));
         //
         this.CleanupCheckBox.setSelected(true);
         this.CleanupCheckBox.setName("CleanupCheckBox");
@@ -140,16 +148,16 @@ public class MainForm extends JFrame {
         this.setPreferredSize(new Dimension(640, 480));
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         panel.add(this.label1);
-        panel.add(this.ClassFileTextBox);
-        panel.add(this.ButtonFileBrowse);
+        panel.add(this.classFileTextField);
+        panel.add(this.fileBrowseButton);
         add(panel, BorderLayout.NORTH);
-        this.add(new JScrollPane(this.TreeClassView), BorderLayout.CENTER);
+        this.add(new JScrollPane(this.classTreeView), BorderLayout.CENTER);
         panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         panel.add(this.CleanupCheckBox);
-        panel.add(this.SmartRenameMethods);
-        panel.add(this.RenameClassCheckBox);
-        panel.add(this.Progress);
-        panel.add(this.ProcessButton);
+        panel.add(this.smartRenameMethods);
+        panel.add(this.renameClassCheckBox);
+        panel.add(this.progressBar);
+        panel.add(this.processButton);
         add(panel, BorderLayout.SOUTH);
         this.setName("MainForm");
         this.setTitle("Java DeObfuscator v1.6b");
@@ -176,13 +184,13 @@ public class MainForm extends JFrame {
 
                 updateTree();
 
-                TreeClassView.expandRow(0);
+                classTreeView.expandRow(0);
             }
         }
     };
 
     private void updateTree() {
-        ((DefaultTreeModel) TreeClassView.getModel()).setRoot(null);
+        ((DefaultTreeModel) classTreeView.getModel()).setRoot(null);
 
         deObfuscator = new DeObfuscator(files);
 
@@ -190,7 +198,8 @@ public class MainForm extends JFrame {
             ClassFile classFile = new ClassFile(file);
 
             if (!classFile.open()) {
-                ((DefaultTreeModel) TreeClassView.getModel()).setRoot(new DefaultMutableTreeNode("Invalid class file: " + file));
+                ((DefaultTreeModel) classTreeView.getModel())
+                        .setRoot(new DefaultMutableTreeNode("Invalid class file: " + file));
                 continue;
             }
 
@@ -198,34 +207,47 @@ public class MainForm extends JFrame {
                 DefaultMutableTreeNode bigRoot;
 
                 // check if the user wants to rename the class file
-                String original_class_name = classFile.getThisClassName() + " : " + classFile.getSuperClassName();
-                String class_name = renameStore.getNewClassName(original_class_name);
+                String originalClassName = classFile.getThisClassName() + " : " + classFile.getSuperClassName();
+                String class_name = renameStore.getNewClassName(originalClassName);
 
                 if (class_name == null) {
-                    class_name = original_class_name;
-                    bigRoot = new DefaultMutableTreeNode(class_name);((DefaultTreeModel) TreeClassView.getModel()).setRoot(bigRoot);
+                    class_name = originalClassName;
+                    bigRoot = new DefaultMutableTreeNode(class_name);
+                    ((DefaultTreeModel) classTreeView.getModel()).setRoot(bigRoot);
                 } else {
-                    bigRoot = new DefaultMutableTreeNode(class_name);((DefaultTreeModel) TreeClassView.getModel()).setRoot(bigRoot);
+                    bigRoot = new DefaultMutableTreeNode(class_name);
+                    ((DefaultTreeModel) classTreeView.getModel()).setRoot(bigRoot);
 //                    bigroot.setBackGround(Color.blue);
                 }
 
-                bigRoot.setUserObject(original_class_name);
+                bigRoot.setUserObject(originalClassName);
 
-                DefaultMutableTreeNode root = new DefaultMutableTreeNode("Constants");bigRoot.add(root);
-                DefaultMutableTreeNode methodsroot = new DefaultMutableTreeNode("Methods/Interfaces/Fields");root.add(methodsroot);
-                DefaultMutableTreeNode methods = new DefaultMutableTreeNode("Methods");methodsroot.add(methods);
-                DefaultMutableTreeNode interfaces = new DefaultMutableTreeNode("Interfaces");methodsroot.add(interfaces);
-                DefaultMutableTreeNode fields = new DefaultMutableTreeNode("Fields");methodsroot.add(fields);
-                DefaultMutableTreeNode variables = new DefaultMutableTreeNode("Values");root.add(variables);
-                DefaultMutableTreeNode classes = new DefaultMutableTreeNode("Classes");root.add(classes);
+                DefaultMutableTreeNode root = new DefaultMutableTreeNode("Constants");
+                bigRoot.add(root);
+                DefaultMutableTreeNode methodsroot = new DefaultMutableTreeNode("Methods/Interfaces/Fields");
+                root.add(methodsroot);
+                DefaultMutableTreeNode methods = new DefaultMutableTreeNode("Methods");
+                methodsroot.add(methods);
+                DefaultMutableTreeNode interfaces = new DefaultMutableTreeNode("Interfaces");
+                methodsroot.add(interfaces);
+                DefaultMutableTreeNode fields = new DefaultMutableTreeNode("Fields");
+                methodsroot.add(fields);
+                DefaultMutableTreeNode variables = new DefaultMutableTreeNode("Values");
+                root.add(variables);
+                DefaultMutableTreeNode classes = new DefaultMutableTreeNode("Classes");
+                root.add(classes);
 
                 for (int i = 0; i < classFile.getConstantPool().getMaxItems(); i++) {
                     ConstantPoolInfo cc = classFile.getConstantPool().getItem(i);
 
                     if (cc instanceof ConstantPoolMethodInfo) {
                         if (cc instanceof ConstantMethodrefInfo) {
-                            DefaultMutableTreeNode temp = new DefaultMutableTreeNode("\"" + ((ConstantMethodrefInfo) cc).nameAndType.name + "\"");methods.add(temp);
-                            temp.add(new DefaultMutableTreeNode("Descriptor = " + ((ConstantMethodrefInfo) cc).nameAndType.descriptor));
+                            DefaultMutableTreeNode temp = new DefaultMutableTreeNode("\"" +
+                                                                                     ((ConstantMethodrefInfo) cc).nameAndType.name +
+                                                                                     "\"");
+                            methods.add(temp);
+                            temp.add(new DefaultMutableTreeNode("Descriptor = " +
+                                                                ((ConstantMethodrefInfo) cc).nameAndType.descriptor));
                             temp.add(new DefaultMutableTreeNode("Parent = " + ((ConstantMethodrefInfo) cc).parentClass.name));
 
 //                            if (DeObfuscator.DoRename(((ConstantMethodrefInfo) cc).NameAndType.Name))
@@ -235,9 +257,14 @@ public class MainForm extends JFrame {
                         }
 
                         if (cc instanceof ConstantInterfaceMethodrefInfo) {
-                            DefaultMutableTreeNode temp = new DefaultMutableTreeNode("\"" + ((ConstantInterfaceMethodrefInfo) cc).nameAndType.name + "\"");interfaces.add(temp);
-                            temp.add(new DefaultMutableTreeNode("Descriptor = " + ((ConstantInterfaceMethodrefInfo) cc).nameAndType.descriptor));
-                            temp.add(new DefaultMutableTreeNode("Parent = " + ((ConstantInterfaceMethodrefInfo) cc).parentClass.name));
+                            DefaultMutableTreeNode temp = new DefaultMutableTreeNode("\"" +
+                                                                                     ((ConstantInterfaceMethodrefInfo) cc).nameAndType.name +
+                                                                                     "\"");
+                            interfaces.add(temp);
+                            temp.add(new DefaultMutableTreeNode("Descriptor = " +
+                                                                ((ConstantInterfaceMethodrefInfo) cc).nameAndType.descriptor));
+                            temp.add(new DefaultMutableTreeNode("Parent = " +
+                                                                ((ConstantInterfaceMethodrefInfo) cc).parentClass.name));
 
 //                            if (DeObfuscator.DoRename(((ConstantInterfaceMethodrefInfo) cc).NameAndType.Name))
 //                                temp.setBackGround(Color.red);
@@ -246,10 +273,15 @@ public class MainForm extends JFrame {
                         }
 
                         if (cc instanceof ConstantFieldrefInfo) {
-                            DefaultMutableTreeNode temp = new DefaultMutableTreeNode("\"" + ((ConstantFieldrefInfo) cc).nameAndType.name + "\"");fields.add(temp);
-                            temp.add(new DefaultMutableTreeNode("Descriptor = " + ((ConstantFieldrefInfo) cc).nameAndType.descriptor));
+                            DefaultMutableTreeNode temp = new DefaultMutableTreeNode("\"" +
+                                                                                     ((ConstantFieldrefInfo) cc).nameAndType.name +
+                                                                                     "\"");
+                            fields.add(temp);
+                            temp.add(new DefaultMutableTreeNode("Descriptor = " +
+                                                                ((ConstantFieldrefInfo) cc).nameAndType.descriptor));
                             if (((ConstantFieldrefInfo) cc).parentClass != null)
-                                temp.add(new DefaultMutableTreeNode("Parent = " + ((ConstantFieldrefInfo) cc).parentClass.name));
+                                temp.add(new DefaultMutableTreeNode("Parent = " +
+                                                                    ((ConstantFieldrefInfo) cc).parentClass.name));
 
 //                            if (DeObfuscator.DoRename(((ConstantFieldrefInfo) cc).NameAndType.Name))
 //                                temp.setBackGround(Color.red);
@@ -257,10 +289,13 @@ public class MainForm extends JFrame {
                             continue;
                         }
                     } else if (cc instanceof ConstantPoolVariableInfo) {
-                        DefaultMutableTreeNode temp = new DefaultMutableTreeNode("\"" + ((ConstantPoolVariableInfo) cc).value + "\"");variables.add(temp);
+                        DefaultMutableTreeNode temp = new DefaultMutableTreeNode("\"" + ((ConstantPoolVariableInfo) cc).value +
+                                                                                 "\"");
+                        variables.add(temp);
                         temp.add(new DefaultMutableTreeNode("References = " + cc.references));
                     } else if (cc instanceof ConstantClassInfo) {
-                        DefaultMutableTreeNode temp = new DefaultMutableTreeNode("\"" + ((ConstantClassInfo) cc).name + "\"");classes.add(temp);
+                        DefaultMutableTreeNode temp = new DefaultMutableTreeNode("\"" + ((ConstantClassInfo) cc).name + "\"");
+                        classes.add(temp);
                         temp.add(new DefaultMutableTreeNode("References = " + cc.references));
                     }
                 }
@@ -274,13 +309,15 @@ public class MainForm extends JFrame {
                 root = new DefaultMutableTreeNode("Fields");
                 bigRoot.add(root);
                 for (FieldInfo fi : classFile.getFields().getItems()) {
-                    RenameData rd = renameStore.getNewFieldInfo(original_class_name, fi.getDescriptor(), fi.getName().value);
+                    RenameData rd = renameStore.getNewFieldInfo(originalClassName, fi.getDescriptor(), fi.getName().value);
                     if (rd != null) {
-                        DefaultMutableTreeNode temp = new DefaultMutableTreeNode(rd.getFieldName());root.add(temp);
+                        DefaultMutableTreeNode temp = new DefaultMutableTreeNode(rd.getFieldName());
+                        root.add(temp);
                         temp.add(new DefaultMutableTreeNode(rd.getFieldType()));
 //                        temp.setBackGround(Color.blue);
                     } else {
-                        DefaultMutableTreeNode temp = new DefaultMutableTreeNode(fi.getName().value);root.add(temp);
+                        DefaultMutableTreeNode temp = new DefaultMutableTreeNode(fi.getName().value);
+                        root.add(temp);
                         temp.add(new DefaultMutableTreeNode(fi.getDescriptor()));
                         temp.setUserObject(fi.getName().value);
 
@@ -292,13 +329,15 @@ public class MainForm extends JFrame {
                 root = new DefaultMutableTreeNode("Methods");
                 bigRoot.add(root);
                 for (MethodInfo mi : classFile.getMethods().getItems()) {
-                    RenameData rd = renameStore.getNewMethodInfo(original_class_name, mi.getDescriptor(), mi.getName().value);
+                    RenameData rd = renameStore.getNewMethodInfo(originalClassName, mi.getDescriptor(), mi.getName().value);
                     if (rd != null) {
-                        DefaultMutableTreeNode temp = new DefaultMutableTreeNode(rd.getFieldName());root.add(temp);
+                        DefaultMutableTreeNode temp = new DefaultMutableTreeNode(rd.getFieldName());
+                        root.add(temp);
                         temp.add(new DefaultMutableTreeNode(rd.getFieldType()));
 //                        temp.setBackGround(Color.blue);
                     } else {
-                        DefaultMutableTreeNode temp = new DefaultMutableTreeNode(mi.getName().value);root.add(temp);
+                        DefaultMutableTreeNode temp = new DefaultMutableTreeNode(mi.getName().value);
+                        root.add(temp);
                         temp.add(new DefaultMutableTreeNode(mi.getDescriptor()));
                         temp.setUserObject(mi.getName().value);
 //                        temp.addChild(String.Format("Offset = {0:X}", mi.Offset));
@@ -319,12 +358,12 @@ public class MainForm extends JFrame {
             deObfuscator = new DeObfuscator(files);
 
             deObfuscator.setCleanup(CleanupCheckBox.isSelected());
-            deObfuscator.setRenameClasses(RenameClassCheckBox.isSelected());
+            deObfuscator.setRenameClasses(renameClassCheckBox.isSelected());
 
-            Progress.setMaximum(files.size());
-            Progress.setVisible(true);
+            progressBar.setMaximum(files.size());
+            progressBar.setVisible(true);
 
-            DeObfuscator.progress = new ProgressMonitor(Progress, null, null, 0, 100);
+            deObfuscator.setProgressive(new Progressive.SwingProgressive(progressBar));
 
             // update the classfile with the new deobfuscated version
             List<File> newFileList = deObfuscator.deObfuscateAll(renameStore);
@@ -334,7 +373,7 @@ public class MainForm extends JFrame {
             } else
                 JOptionPane.showConfirmDialog(null, "Error!!!", "DeObfuscator", JOptionPane.DEFAULT_OPTION);
 
-            Progress.setVisible(false);
+            progressBar.setVisible(false);
             renameStore = new RenameDatabase();
             updateTree();
         }
@@ -343,7 +382,8 @@ public class MainForm extends JFrame {
     private MouseListener TreeClassView_NodeMouseClick = new MouseAdapter() {
         public void mouseClicked(MouseEvent e) {
             // detect right click on a valid member to popup a 'change name' box.
-            if (e.getButton() == MouseEvent.BUTTON2 && ((TreeNode) e.getSource()).getParent() != null && ((TreeNode) e.getSource()).getParent().getParent() != null) {
+            if (e.getButton() == MouseEvent.BUTTON2 && ((TreeNode) e.getSource()).getParent() != null &&
+                ((TreeNode) e.getSource()).getParent().getParent() != null) {
 //                ChangeName FChangeName = new ChangeName();
 //                FChangeName.NameBox.setText((MutableTreeNode) e.getSource()).toString());
                 // get the full path of the node we clicked on, so we have all the
@@ -373,7 +413,13 @@ public class MainForm extends JFrame {
 
                 // check which subsection we are in, so we can add it to the right
                 // list
-                Object result = JOptionPane.showInputDialog(null, "Change Name...", "ChangeName", JOptionPane.YES_NO_CANCEL_OPTION, null, null, ((TreeNode) e.getSource()).toString());
+                Object result = JOptionPane.showInputDialog(null,
+                                                            "Change Name...",
+                                                            "ChangeName",
+                                                            JOptionPane.YES_NO_CANCEL_OPTION,
+                                                            null,
+                                                            null,
+                                                            ((TreeNode) e.getSource()).toString());
                 if ((type == "Methods" || type == "Fields") && // section
                     (result != null)) {
                     String old_descriptor = (String) sl[3];
@@ -393,7 +439,7 @@ public class MainForm extends JFrame {
 //                    tn.getParent().setBackGround(Color.blue);
                 }
             } else if (e.getButton() == MouseEvent.BUTTON2 && ((TreeNode) e.getSource()).getParent() == null) {
-                ChangeName changeName = new ChangeName();
+                ChangeNameDialog changeName = new ChangeNameDialog();
                 String[] s = ((TreeNode) e.getSource()).toString().split(":");
 
                 String old_name = s[0].trim();
