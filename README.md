@@ -1,3 +1,8 @@
+[![Release](https://jitpack.io/v/umjammer/vavi-apps-jdo.svg)](https://jitpack.io/#umjammer/vavi-apps-jdo)
+[![Java CI](https://github.com/umjammer/vavi-apps-jdo/actions/workflows/maven.yml/badge.svg)](https://github.com/umjammer/vavi-apps-jdo/actions/workflows/maven.yml)
+[![CodeQL](https://github.com/umjammer/vavi-apps-jdo/actions/workflows/codeql.yml/badge.svg)](https://github.com/umjammer/vavi-apps-jdo/actions/workflows/codeql.yml)
+![Java](https://img.shields.io/badge/Java-17-b07219)
+
 # Java DeObfuscator (aka JDO)
 
 When reversing Java, you will invariably run up against a fairly common form of data obscuring techniques: obfuscated code.
@@ -11,13 +16,12 @@ In came data obfuscation to the rescue! Not only does it make it more difficult 
 Data Obfuscation attempts to obscure and obfuscate the variable names, class names, method names, strings and sometimes even the actual byte code in an attempt to thwart decompilers. And some of them even work.
 
 Consider the following code, taken from a freely available (obfuscated) java library and decompiled with Jad:
- 
-    private static int _mthchar(int i1)
-    {
+
+```java
+    private static int _mthchar(int i1) {
         int j1 = 0;
         int k1 = (1 << i1) - 1;
-        if(i1 > _fldchar)
-        {
+        if(i1 > _fldchar) {
             i1 -= _fldchar;
             j1 = _fldnew[bL++] << i1 & k1;
             _fldchar = 32;
@@ -27,15 +31,15 @@ Consider the following code, taken from a freely available (obfuscated) java lib
         j1 &= k1;
         return j1;
     }
+```
   
 Due to Jad's solid engine, it is able to create correct code by prepending '_fld' to indicate the variable is a field and '_mth' to indicate its a method. A lesser decompiler may have got confused and produced garbled results or crashed, at the very least confusing the reader with interesting snippets of code like:
- 
-    private static int char(int i1)
-    {
+
+```java
+    private static int char(int i1) {
         int j1 = 0;
         int k1 = (1 << i1) - 1;
-        if(i1 > char)
-        {
+        if(i1 > char) {
             i1 -= char;
             j1 = new[bL++] << i1 & k1;
             char = 32;
@@ -45,17 +49,17 @@ Due to Jad's solid engine, it is able to create correct code by prepending '_fld
         j1 &= k1;
         return j1;
     }
+```
 
 As you can see this is not exactly easy to reverse! One gets stuck constantly backtracking, resolving variables, methods and classes to their proper variables instead of getting to the heart of the problem. Jad does well to make it a step easier with its extra labels but its still quite tiresome to reverse. Obfuscation is a fairly common method to "cheaply" thwart the impatient and slap-dash reverse engineers, but with patience anything can be unravelled. Fortunately JDO makes it that little bit easier.
 
 For example, this is the exact same method after running the class files through JDO: 
 
-    private static int sub_2374(int i)
-    {
+```java
+    private static int sub_2374(int i) {
         int j = 0;
         int k = (1 << i) - 1;
-        if(i > var_2354)
-        {
+        if(i > var_2354) {
             i -= var_2354;
             j = var_1dd4[var_234c++] << i & k;
             var_2354 = 32;
@@ -65,6 +69,7 @@ For example, this is the exact same method after running the class files through
         j &= k;
         return j;
     }
+```
 
 As you can see the code structure does not change, but suddenly it seems that little bit easier to understand.
 
