@@ -11,7 +11,7 @@ public enum AccessFlags {
     ACC_INTERFACE(0x0200),
     ACC_ABSTRACT(0x0400),
     ACC_UNKNOWN(-1);
-    public int value;
+    public final int value;
 
     AccessFlags(int value) {
         this.value = value;

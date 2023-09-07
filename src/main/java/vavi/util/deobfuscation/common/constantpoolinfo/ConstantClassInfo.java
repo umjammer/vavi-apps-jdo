@@ -7,6 +7,7 @@ package vavi.util.deobfuscation.common.constantpoolinfo;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import vavi.util.deobfuscation.common.Common;
@@ -48,7 +49,7 @@ public class ConstantClassInfo extends ConstantPoolInfo {
         if (nameIndex < items.size()) {
             Object o = items.get(nameIndex);
             if (o instanceof ConstantUtf8Info) {
-                name = new String(((ConstantUtf8Info) o).bytes, "UTF-8");
+                name = new String(((ConstantUtf8Info) o).bytes, StandardCharsets.UTF_8);
                 ((ConstantPoolInfo) o).references++;
 
                 return true;

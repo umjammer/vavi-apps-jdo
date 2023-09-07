@@ -1,4 +1,3 @@
-
 package vavi.util.deobfuscation;
 
 import java.awt.BorderLayout;
@@ -14,6 +13,7 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.swing.JButton;
@@ -30,7 +30,6 @@ import javax.swing.JTree;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
-import javax.swing.tree.MutableTreeNode;
 import javax.swing.tree.TreeNode;
 
 import vavi.util.deobfuscation.common.ConstantPoolInfo;
@@ -103,7 +102,7 @@ public class MainForm extends JFrame {
         this.fileBrowseButton.addActionListener(this.button1_Click);
         //
         this.classTreeView.setName("TreeClassView");
-        this.classTreeView.addMouseListener(this.TreeClassView_NodeMouseClick);
+        this.classTreeView.addMouseListener(this.treeClassViewNodeMouseClick);
         //
         // OpenFileDialog
         //
@@ -122,7 +121,7 @@ public class MainForm extends JFrame {
         //
         this.processButton.setName("ProcessButton");
         this.processButton.setText("Deobfuscate");
-        this.processButton.addActionListener(this.ProcessButton_Click);
+        this.processButton.addActionListener(this.processButtonClick);
         //
 //        this.toolTip.isBalloon(true);
         //
@@ -173,14 +172,13 @@ public class MainForm extends JFrame {
     }
 
     private ActionListener button1_Click = new ActionListener() {
+        @Override
         public void actionPerformed(ActionEvent e) {
             if (openFileDialog.showOpenDialog(null) == JOptionPane.OK_OPTION) {
                 if (files == null) {
                     files = new ArrayList<>();
                 }
-                for (File fn : openFileDialog.getSelectedFiles()) {
-                    files.add(fn);
-                }
+                files.addAll(Arrays.asList(openFileDialog.getSelectedFiles()));
 
                 updateTree();
 
@@ -350,7 +348,8 @@ public class MainForm extends JFrame {
         }
     }
 
-    private ActionListener ProcessButton_Click = new ActionListener() {
+    private ActionListener processButtonClick = new ActionListener() {
+        @Override
         public void actionPerformed(ActionEvent e) {
             if (files == null)
                 return;
@@ -379,7 +378,8 @@ public class MainForm extends JFrame {
         }
     };
 
-    private MouseListener TreeClassView_NodeMouseClick = new MouseAdapter() {
+    private MouseListener treeClassViewNodeMouseClick = new MouseAdapter() {
+        @Override
         public void mouseClicked(MouseEvent e) {
             // detect right click on a valid member to popup a 'change name' box.
             if (e.getButton() == MouseEvent.BUTTON2 && ((TreeNode) e.getSource()).getParent() != null &&
@@ -416,20 +416,20 @@ public class MainForm extends JFrame {
                 Object result = JOptionPane.showInputDialog(null,
                                                             "Change Name...",
                                                             "ChangeName",
-                                                            JOptionPane.YES_NO_CANCEL_OPTION,
+                        JOptionPane.INFORMATION_MESSAGE,
                                                             null,
                                                             null,
-                                                            ((TreeNode) e.getSource()).toString());
-                if ((type == "Methods" || type == "Fields") && // section
+                                                            e.getSource().toString());
+                if ((type.equals("Methods") || type.equals("Fields")) && // section
                     (result != null)) {
                     String old_descriptor = (String) sl[3];
 
                     if (old_descriptor == null)
                         return;
 
-                    if (type == "Methods") {
+                    if (type.equals("Methods")) {
                         renameStore.addRenameMethod(class_name, old_descriptor, old_name, old_descriptor, (String) result);
-                    } else if (type == "Fields") {
+                    } else if (type.equals("Fields")) {
                         renameStore.addRenameField(class_name, old_descriptor, old_name, old_descriptor, (String) result);
                     }
 
@@ -440,7 +440,7 @@ public class MainForm extends JFrame {
                 }
             } else if (e.getButton() == MouseEvent.BUTTON2 && ((TreeNode) e.getSource()).getParent() == null) {
                 ChangeNameDialog changeName = new ChangeNameDialog();
-                String[] s = ((TreeNode) e.getSource()).toString().split(":");
+                String[] s = e.getSource().toString().split(":");
 
                 String old_name = s[0].trim();
                 String old_descriptor = s[1].trim();
@@ -450,10 +450,10 @@ public class MainForm extends JFrame {
 
                 changeName.nameBox.setText(old_name);
 
-                // change the class name, since its a root node
-                if (JOptionPane.showInputDialog(null, "Change Name...", "ChangeName", JOptionPane.OK_CANCEL_OPTION) != null) {
+                // change the class name, since it's a root node
+                if (JOptionPane.showInputDialog(null, "Change Name...", "ChangeName", JOptionPane.WARNING_MESSAGE) != null) {
                     String new_name_and_type = changeName.nameBox.getText() + " : " + old_descriptor;
-                    renameStore.addRenameClass(((MutableTreeNode) e.getSource()).toString(), new_name_and_type);
+                    renameStore.addRenameClass(e.getSource().toString(), new_name_and_type);
 
 //                    ((TreeNode) e.getSource()).setBackGround(Color.blue);
                     ((DefaultMutableTreeNode) e.getSource()).setUserObject(new_name_and_type);

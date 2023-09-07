@@ -7,7 +7,7 @@ package vavi.util.deobfuscation.common.constantpoolinfo;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import vavi.util.deobfuscation.common.Common;
@@ -30,26 +30,16 @@ public class ConstantUtf8Info extends ConstantPoolInfo {
     }
 
     public ConstantUtf8Info(String text) {
-        try {
-            tag = ConstantPoolInfoTag.ConstantUtf8.value;
-            bytes = text.getBytes("UTF-8");
-            length = bytes.length;
-            value = new String(bytes, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            System.err.println(e);
-            assert false;
-        }
+        tag = ConstantPoolInfoTag.ConstantUtf8.value;
+        bytes = text.getBytes(StandardCharsets.UTF_8);
+        length = bytes.length;
+        value = new String(bytes, StandardCharsets.UTF_8);
     }
 
     public void setName(String text) {
-        try {
-            bytes = text.getBytes("UTF-8");
-            length = bytes.length;
-            value = new String(bytes, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            System.err.println(e);
-            assert false;
-        }
+        bytes = text.getBytes(StandardCharsets.UTF_8);
+        length = bytes.length;
+        value = new String(bytes, StandardCharsets.UTF_8);
     }
 
     @Override
@@ -60,7 +50,7 @@ public class ConstantUtf8Info extends ConstantPoolInfo {
         reader.readFully(bytes, 0, length);
         Common.position += length;
 
-        value = new String(bytes, "UTF-8");
+        value = new String(bytes, StandardCharsets.UTF_8);
     }
 
     @Override

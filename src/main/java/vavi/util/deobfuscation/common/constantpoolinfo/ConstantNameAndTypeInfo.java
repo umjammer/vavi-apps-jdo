@@ -7,7 +7,7 @@ package vavi.util.deobfuscation.common.constantpoolinfo;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import vavi.util.deobfuscation.common.Common;
@@ -34,42 +34,27 @@ public class ConstantNameAndTypeInfo extends ConstantPoolInfo {
     }
 
     public ConstantNameAndTypeInfo(int indexName, int indexType, ConstantPool constantPool) {
-        try {
-            tag = ConstantPoolInfoTag.ConstantNameAndType.value;
-            nameIndex = indexName;
-            descriptorIndex = indexType;
-            name = new String(((ConstantUtf8Info) constantPool.getItem(indexName)).bytes, "UTF-8");
-            constantPool.getItem(indexName).references++;
-            descriptor = new String(((ConstantUtf8Info) constantPool.getItem(indexType)).bytes, "UTF-8");
-            constantPool.getItem(indexType).references++;
-        } catch (UnsupportedEncodingException e) {
-            System.err.println(e);
-            assert false;
-        }
+        tag = ConstantPoolInfoTag.ConstantNameAndType.value;
+        nameIndex = indexName;
+        descriptorIndex = indexType;
+        name = new String(((ConstantUtf8Info) constantPool.getItem(indexName)).bytes, StandardCharsets.UTF_8);
+        constantPool.getItem(indexName).references++;
+        descriptor = new String(((ConstantUtf8Info) constantPool.getItem(indexType)).bytes, StandardCharsets.UTF_8);
+        constantPool.getItem(indexType).references++;
     }
 
     // where index instanceof a valid index into the constant pool table
     public void setName(int index, ConstantPool constantPool) {
-        try {
-            nameIndex = index;
-            name = new String(((ConstantUtf8Info) constantPool.getItem(index)).bytes, "UTF-8");
-            constantPool.getItem(index).references++;
-        } catch (UnsupportedEncodingException e) {
-            System.err.println(e);
-            assert false;
-        }
+        nameIndex = index;
+        name = new String(((ConstantUtf8Info) constantPool.getItem(index)).bytes, StandardCharsets.UTF_8);
+        constantPool.getItem(index).references++;
     }
 
     // where index instanceof a valid index into the constant pool table
     public void setType(int index, ConstantPool constantPool) {
-        try {
-            descriptorIndex = index;
-            descriptor = new String(((ConstantUtf8Info) constantPool.getItem(index)).bytes, "UTF-8");
-            constantPool.getItem(index).references++;
-        } catch (UnsupportedEncodingException e) {
-            System.err.println(e);
-            assert false;
-        }
+        descriptorIndex = index;
+        descriptor = new String(((ConstantUtf8Info) constantPool.getItem(index)).bytes, StandardCharsets.UTF_8);
+        constantPool.getItem(index).references++;
     }
 
     @Override
@@ -97,7 +82,7 @@ public class ConstantNameAndTypeInfo extends ConstantPoolInfo {
             if (nameIndex < items.size()) {
                 Object o = items.get(nameIndex);
                 if (o instanceof ConstantUtf8Info) {
-                    name = new String(((ConstantUtf8Info) o).bytes, "UTF-8");
+                    name = new String(((ConstantUtf8Info) o).bytes, StandardCharsets.UTF_8);
                     ((ConstantPoolInfo) o).references++;
                 }
             }
@@ -114,7 +99,7 @@ public class ConstantNameAndTypeInfo extends ConstantPoolInfo {
             if (descriptorIndex < items.size()) {
                 Object o = items.get(descriptorIndex);
                 if (o instanceof ConstantUtf8Info) {
-                    descriptor = new String(((ConstantUtf8Info) o).bytes, "UTF-8");
+                    descriptor = new String(((ConstantUtf8Info) o).bytes, StandardCharsets.UTF_8);
                     ((ConstantPoolInfo) o).references++;
                 }
             }

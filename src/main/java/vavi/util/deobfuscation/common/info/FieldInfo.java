@@ -102,6 +102,7 @@ public class FieldInfo {
         return offset;
     }
 
+    @Override
     public Object clone() {
         FieldInfo newFileInfo = new FieldInfo();
         newFileInfo.accessFlags = accessFlags;
