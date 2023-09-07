@@ -30,7 +30,7 @@ public class ConstantIntegerInfo extends ConstantPoolVariableInfo {
 
     @Override
     public boolean resolve(List<?> items) {
-        value = (int) bytes;
+        value = bytes;
         return true;
     }
 }

@@ -89,7 +89,7 @@ public enum ConstantPoolInfoTag {
             return null;
         }
     };
-    public int value;
+    public final int value;
 
     ConstantPoolInfoTag(int value) {
         this.value = value;

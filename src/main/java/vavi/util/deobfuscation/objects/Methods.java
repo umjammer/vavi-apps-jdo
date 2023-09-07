@@ -68,7 +68,7 @@ public class Methods {
 
     public boolean methodNameExists(String name) {
         for (int i = 0; i < maxItems; i++) {
-            if (name == items.get(i).getName().value)
+            if (name.equals(items.get(i).getName().value))
                 return true;
         }
 

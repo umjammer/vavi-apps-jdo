@@ -227,8 +227,8 @@ public class ClassFile {
         for (int i = 0; i < constantPool.getMaxItems(); i++) {
             if (constantPool.getItem(i).tag == (byte) ConstantPoolInfoTag.ConstantMethodref.value) {
                 methodRef = (ConstantMethodrefInfo) constantPool.getItem(i);
-                if (methodRef.parentClass.name == thisClassName && methodRef.nameAndType.name == method.getName().value &&
-                    methodRef.nameAndType.descriptor == method.getDescriptor()) {
+                if (methodRef.parentClass.name.equals(thisClassName) && methodRef.nameAndType.name.equals(method.getName().value) &&
+                        methodRef.nameAndType.descriptor.equals(method.getDescriptor())) {
                     // jackpot, we found the reference!
                     // there should be only one, so we will break and fix it up
                     // after we generate the new name
@@ -289,8 +289,8 @@ public class ClassFile {
         for (int i = 0; i < constantPool.getMaxItems(); i++) {
             if (constantPool.getItem(i).tag == (byte) ConstantPoolInfoTag.ConstantFieldref.value) {
                 fieldRef = (ConstantFieldrefInfo) constantPool.getItem(i);
-                if (fieldRef.parentClass.name == thisClassName && fieldRef.nameAndType.name == field.getName().value &&
-                    fieldRef.nameAndType.descriptor == field.getDescriptor()) {
+                if (fieldRef.parentClass.name.equals(thisClassName) && fieldRef.nameAndType.name.equals(field.getName().value) &&
+                        fieldRef.nameAndType.descriptor.equals(field.getDescriptor())) {
                     // jackpot, we found the reference!
                     // there should be only one, so we will break and fix it up
                     // after we generate the new name
@@ -382,7 +382,7 @@ public class ClassFile {
         String oldName = fieldRef.nameAndType.descriptor;
         String newName = Common.fixDescriptor(fieldRef.nameAndType.descriptor, oldParentName, newParentName);
 
-        if (oldName == newName)
+        if (oldName.equals(newName))
             return;
 
         ConstantUtf8Info newTypeString = new ConstantUtf8Info(newName);
@@ -401,7 +401,7 @@ public class ClassFile {
         String oldName = fieldRef.getDescriptor();
         String newName = Common.fixDescriptor(fieldRef.getDescriptor(), oldParentName, newParentName);
 
-        if (oldName == newName)
+        if (oldName.equals(newName))
             return;
 
         ConstantUtf8Info newTypeString = new ConstantUtf8Info(newName);
@@ -421,7 +421,7 @@ public class ClassFile {
         String oldName = methodRef.getDescriptor();
         String newName = Common.fixDescriptor(methodRef.getDescriptor(), oldParentName, newParentName);
 
-        if (oldName == newName)
+        if (oldName.equals(newName))
             return;
 
         ConstantUtf8Info newTypeString = new ConstantUtf8Info(newName);
@@ -438,7 +438,7 @@ public class ClassFile {
 
         InterfaceInfo intInfo = interfaces.item(interfaceNumber);
 
-        if (intInfo.getName() == newName)
+        if (intInfo.getName().equals(newName))
             return;
 
         ConstantUtf8Info newTypeString = new ConstantUtf8Info(newName);
@@ -484,7 +484,7 @@ public class ClassFile {
         ConstantClassInfo classInfo = (ConstantClassInfo) constantPool.getItem(superClass);
         ConstantUtf8Info utfInfo = (ConstantUtf8Info) constantPool.getItem(classInfo.nameIndex);
 
-        // skip this coz we already passing the full name in
+        // skip this coz we're already passing the full name in
         // NewName = Common.NewClassName(FSuperClassName, NewName);
 
         if (utfInfo.references <= 1) {

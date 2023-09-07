@@ -52,7 +52,7 @@ public class DeObfuscator {
     /**
      * The DeObfuscating engine
      *
-     * @param files All of the files in the project. Must be full path
+     * @param files All the files in the project. Must be full path
      *            + filename
      */
     public DeObfuscator(List<File> files) {
@@ -94,14 +94,14 @@ public class DeObfuscator {
         if (name.charAt(0) == '<')
             return false;
 
-        if (name.length() > 0 && name.length() <= 2)
+        if (!name.isEmpty() && name.length() <= 2)
             return true;
 
-        if (name.length() > 0 && name.length() <= 3 && name.indexOf("$") > 0)
+        if (!name.isEmpty() && name.length() <= 3 && name.indexOf("$") > 0)
             return true;
 
         for (String s : bad_names) {
-            if (s == name)
+            if (s.equals(name))
                 return true;
         }
 
@@ -110,7 +110,7 @@ public class DeObfuscator {
 
     private boolean classNameExists(String name) {
         for (Object classFile : classFiles.toArray()) {
-            if (((ClassFile) classFile).getThisClassName() == name)
+            if (((ClassFile) classFile).getThisClassName().equals(name))
                 return true;
         }
 
@@ -142,7 +142,7 @@ public class DeObfuscator {
         } else if (renameClasses && doRename(originalClassName)) {
             String newClassName = "Class_" + Common.getClassName(originalClassName);
 
-            // test if the filename we are changing to hasnt already been used!
+            // test if the filename we are changing to hasn't already been used!
             while (classNameExists(newClassName)) {
                 newClassName += "_";
             }
@@ -159,7 +159,7 @@ public class DeObfuscator {
             if (doRename(mi.getName().value) || rd != null) {
                 // clone the original method
                 MethodChangeRecord mcr = new MethodChangeRecord(mi);
-                // rename all of the functions something meaningful
+                // rename all the functions something meaningful
                 String newName;
                 // if the offset is zero, it probably means its an abstract
                 // method
@@ -264,7 +264,7 @@ public class DeObfuscator {
         String newParentName = (String) changeList.get(1);
 
         // check the Super class name if it needs renaming
-        if (classFile.getSuperClassName() == oldParentName) {
+        if (classFile.getSuperClassName().equals(oldParentName)) {
             classFile.changeSuperClassName(newParentName);
         }
 
@@ -273,11 +273,10 @@ public class DeObfuscator {
         // just modified, try and match it to one of the changes
         // in the changearray
         for (int i = 0; i < classFile.getConstantPool().getMaxItems(); i++) {
-            if (classFile.getConstantPool().getItem(i) instanceof ConstantPoolMethodInfo) {
-                ConstantPoolMethodInfo ci = (ConstantPoolMethodInfo) classFile.getConstantPool().getItem(i);
+            if (classFile.getConstantPool().getItem(i) instanceof ConstantPoolMethodInfo ci) {
 
                 // check its parent
-                if (ci.parentClass.name == oldParentName || ci.parentClass.name == newParentName) {
+                if (ci.parentClass.name.equals(oldParentName) || ci.parentClass.name.equals(newParentName)) {
                     // check the descriptor
                     // - for fields this is the field type
                     // - for methods this is the parameter list
@@ -292,16 +291,15 @@ public class DeObfuscator {
                                 MethodChangeRecord mcr = (MethodChangeRecord) changeList.get(j);
 
                                 // if found update it to the overridden version
-                                if (mcr.getOriginalMethod().getName().value == ci.nameAndType.name &&
-                                    mcr.getOriginalMethod().getDescriptor() == ci.nameAndType.descriptor) {
+                                if (mcr.getOriginalMethod().getName().value.equals(ci.nameAndType.name) &&
+                                        mcr.getOriginalMethod().getDescriptor().equals(ci.nameAndType.descriptor)) {
                                     // find the overridden version
                                     for (int k = 2; k < ownerChangeList.size(); k++) {
-                                        if (ownerChangeList.get(k) instanceof MethodChangeRecord) {
-                                            MethodChangeRecord mcr2 = (MethodChangeRecord) ownerChangeList.get(k);
-                                            if (mcr2.getOriginalMethod().getName().value == mcr.getOriginalMethod()
-                                                    .getName().value &&
-                                                mcr2.getOriginalMethod().getDescriptor() == mcr.getOriginalMethod()
-                                                        .getDescriptor()) {
+                                        if (ownerChangeList.get(k) instanceof MethodChangeRecord mcr2) {
+                                            if (mcr2.getOriginalMethod().getName().value.equals(mcr.getOriginalMethod()
+                                                    .getName().value) &&
+                                                    mcr2.getOriginalMethod().getDescriptor().equals(mcr.getOriginalMethod()
+                                                            .getDescriptor())) {
                                                 classFile.changeConstantFieldName(i, mcr2.getNewMethod().getName().value);
                                                 break;
                                             }
@@ -312,18 +310,17 @@ public class DeObfuscator {
                                 MethodChangeRecord mcr = (MethodChangeRecord) changeList.get(j);
 
                                 // if found update it to the new version...
-                                if (mcr.getOriginalMethod().getName().value == ci.nameAndType.name &&
-                                    mcr.getOriginalMethod().getDescriptor() == ci.nameAndType.descriptor) {
+                                if (mcr.getOriginalMethod().getName().value.equals(ci.nameAndType.name) &&
+                                        mcr.getOriginalMethod().getDescriptor().equals(ci.nameAndType.descriptor)) {
                                     classFile.changeConstantFieldName(i, mcr.getNewMethod().getName().value);
                                     break;
                                 }
                             }
-                        } else if ((changeList.get(j) instanceof FieldChangeRecord) && (ci instanceof ConstantFieldrefInfo)) {
-                            FieldChangeRecord fcr = (FieldChangeRecord) changeList.get(j);
+                        } else if ((changeList.get(j) instanceof FieldChangeRecord fcr) && (ci instanceof ConstantFieldrefInfo)) {
 
                             // if found update it to the new version...
-                            if (fcr.getOriginalField().getName().value == ci.nameAndType.name &&
-                                fcr.getOriginalField().getDescriptor() == ci.nameAndType.descriptor) {
+                            if (fcr.getOriginalField().getName().value.equals(ci.nameAndType.name) &&
+                                    fcr.getOriginalField().getDescriptor().equals(ci.nameAndType.descriptor)) {
                                 classFile.changeConstantFieldName(i, fcr.getNewField().getName().value);
                                 break;
                             }
@@ -343,7 +340,7 @@ public class DeObfuscator {
         }
         // and the same for all the interfaces
         for (int i = 0; i < classFile.getInterfaces().getItems().size(); i++) {
-            if (classFile.getInterfaces().item(i).getName() == oldParentName)
+            if (classFile.getInterfaces().item(i).getName().equals(oldParentName))
                 classFile.changeInterfaceName(i, newParentName);
         }
     }
@@ -374,12 +371,11 @@ public class DeObfuscator {
         // iterate through the constant pool looking for class references
         // that match the old class name
         for (int i = 0; i < classFile.getConstantPool().getMaxItems(); i++) {
-            if (classFile.getConstantPool().getItem(i) instanceof ConstantClassInfo) {
-                ConstantClassInfo ci = (ConstantClassInfo) classFile.getConstantPool().getItem(i);
+            if (classFile.getConstantPool().getItem(i) instanceof ConstantClassInfo ci) {
 
                 // if we found a ClassInfo constant with the same name as the
                 // old name
-                if (ci.name == oldParentName) {
+                if (ci.name.equals(oldParentName)) {
                     // create a new UTF String constant
                     ConstantUtf8Info ui = new ConstantUtf8Info();
                     // set it to the new parent name
@@ -391,7 +387,7 @@ public class DeObfuscator {
                     ci.setName(index, classFile.getConstantPool());
                 }
                 // special condition for array type references
-                else if (ci.name.indexOf("L" + oldParentName + ";") >= 0) {
+                else if (ci.name.contains("L" + oldParentName + ";")) {
                     // create a new UTF String constant
                     ConstantUtf8Info ui = new ConstantUtf8Info();
                     // set it to the new parent name
@@ -416,14 +412,14 @@ public class DeObfuscator {
         // loop through the change record's and apply them to each file
         // (except itself)
         for (int i = 0; i < classFiles.size(); i++) {
-            for (int j = 0; j < masterChangeList.size(); j++) {
-                fixReferencePass1(i, masterChangeList.get(j), masterChangeList.get(i));
+            for (List<Object> objects : masterChangeList) {
+                fixReferencePass1(i, objects, masterChangeList.get(i));
             }
         }
 
         for (int i = 0; i < classFiles.size(); i++) {
-            for (int j = 0; j < masterChangeList.size(); j++) {
-                fixReferencePass2(i, masterChangeList.get(j));
+            for (List<Object> objects : masterChangeList) {
+                fixReferencePass2(i, objects);
             }
         }
     }
@@ -433,13 +429,13 @@ public class DeObfuscator {
      * project.
      *
      * @param index Index of class file to find parent of
-     * @returns positive integer index if found, else -1 if not found
+     * @return positive integer index if found, else -1 if not found
      */
     int findParent(int index) {
         String ParentName = classFiles.get(index).getSuperClassName();
 
         for (int i = 0; i < classFiles.size(); i++) {
-            if (i != index && classFiles.get(i).getThisClassName() == ParentName) {
+            if (i != index && classFiles.get(i).getThisClassName().equals(ParentName)) {
                 return i;
             }
         }
@@ -449,7 +445,7 @@ public class DeObfuscator {
 
      int findClass(String className) {
         for (int i = 0; i < classFiles.size(); i++) {
-            if (classFiles.get(i).getThisClassName() == className) {
+            if (classFiles.get(i).getThisClassName().equals(className)) {
                 return i;
             }
         }
@@ -460,7 +456,7 @@ public class DeObfuscator {
     int findInterface(String className) {
         for (int i = 0; i < classFiles.size(); i++) {
             if (classFiles.get(i).getAccessFlags() == AccessFlags.ACC_INTERFACE &&
-                classFiles.get(i).getThisClassName() == className) {
+                    classFiles.get(i).getThisClassName().equals(className)) {
                 return i;
             }
         }
@@ -508,7 +504,7 @@ public class DeObfuscator {
             for (int j = 0; j < classFiles.size(); j++) {
                 String oldName = (String) masterChangeList.get(j).get(0);
 
-                if (oldName == classFile.getInterfaces().item(i).getName()) {
+                if (oldName.equals(classFile.getInterfaces().item(i).getName())) {
                     List<Object> originalChangeList = masterChangeList.get(index);
                     List<Object> interfaceChangeList = masterChangeList.get(j);
 
@@ -601,7 +597,7 @@ public class DeObfuscator {
 
             // file_name = file_name.Replace('/', '\\');
 
-            if ((file_name != cf.getFile().getPath()) && cleanup) {
+            if ((!file_name.equals(cf.getFile().getPath())) && cleanup) {
                 cf.getFile().delete();
             }
 

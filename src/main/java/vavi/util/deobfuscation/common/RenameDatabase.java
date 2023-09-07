@@ -35,11 +35,11 @@ public class RenameDatabase {
             al = new ArrayList<>();
             destTable.put(className, al);
         } else {
-            // make sure it doesnt already exist
+            // make sure it doesn't already exist
             for (int i = 0; i < al.size(); i += 2) {
                 RenameData rd = al.get(i);
 
-                if (rd.getFieldName() == oldName && rd.getFieldType() == oldDescriptor) {
+                if (rd.getFieldName().equals(oldName) && rd.getFieldType().equals(oldDescriptor)) {
                     // if it does, overwrite it, don't add in a new one
                     rd.setFieldName(newName);
                     return;
@@ -63,7 +63,7 @@ public class RenameDatabase {
         for (int i = 0; i < al.size(); i += 2) {
             RenameData rd = al.get(i);
 
-            if (rd.getFieldName() == oldName && rd.getFieldType() == oldDescriptor) {
+            if (rd.getFieldName().equals(oldName) && rd.getFieldType().equals(oldDescriptor)) {
                 return al.get(i + 1);
             }
         }

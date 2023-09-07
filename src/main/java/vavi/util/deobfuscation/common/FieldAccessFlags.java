@@ -21,7 +21,7 @@ enum FieldAccessFlags {
      * Declared transient; not written or read by a persistent object manager.
      */
     ACC_TRANSIENT(0x0080);
-    int value;
+    final int value;
 
     FieldAccessFlags(int value) {
         this.value = value;

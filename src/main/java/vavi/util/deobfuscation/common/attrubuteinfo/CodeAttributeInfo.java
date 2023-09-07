@@ -38,7 +38,7 @@ public class CodeAttributeInfo extends AttributeInfo {
 
     Attributes attributes;
 
-    // stuff i want
+    // stuff I want
     long offsetOfCode;
 
     public CodeAttributeInfo(int nameIndex, DataInput reader, ConstantPool constantPool) {

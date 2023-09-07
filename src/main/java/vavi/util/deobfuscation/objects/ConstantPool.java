@@ -38,26 +38,22 @@ System.err.printf("tag: %d\n", tag);
             ConstantPoolInfoTag cpiTag = ConstantPoolInfoTag.valueOf(tag);
             ConstantPoolInfo cc = cpiTag.getConstantPoolInfo();
             switch (cpiTag) {
-            default: {
+            default -> {
                 cc.read(tag, reader);
                 items.add(cc);
-                break;
             }
-            case ConstantLong:
-            case ConstantDouble: {
+            case ConstantLong, ConstantDouble -> {
                 cc.read(tag, reader);
                 items.add(cc);
                 // longs take up two entries in the pool table
                 // so do doubles
                 count++;
                 items.add(cc);
-                break;
             }
-            case ConstantUnknown:
+            case ConstantUnknown ->
                 // fail safe ?
 //System.err.printf("tag: %s\n", ConstantPoolInfoTag.valueOf(tag));
-                count++;
-                break;
+                    count++;
             }
 
             count++;
@@ -69,8 +65,8 @@ System.err.printf("tag: %d\n", tag);
     }
 
     public void write(DataOutput writer) throws IOException {
-        // i am assuming we have a valid constant pool list...
-        // i dont do any error checking here except bare minimum!
+        // I am assuming we have a valid constant pool list...
+        // I don't do any error checking here except bare minimum!
 
         // write the number of constant pool entries
         Common.writeShort(writer, maxItems + 1);
@@ -81,25 +77,21 @@ System.err.printf("tag: %d\n", tag);
             ConstantPoolInfo item = items.get(count);
 
             switch (ConstantPoolInfoTag.valueOf(item.tag)) {
-            default: {
+            default -> {
                 item.write(writer);
 
-                break;
             }
-            case ConstantLong:
-            case ConstantDouble: {
+            case ConstantLong, ConstantDouble -> {
                 item.write(writer);
 
                 // longs take up two entries in the pool table
                 // so do doubles
                 count++;
-                break;
             }
-            case ConstantUnknown:
+            case ConstantUnknown ->
                 // fail safe ?
                 // BADDDDDDDDDDDDDDDDDDDDD, prolly should check/fix this
-                count++;
-                break;
+                    count++;
             }
 
             count++;

@@ -29,7 +29,7 @@ public class DeprecatedAttributeInfo extends AttributeInfo {
         try {
             attributeNameIndex = nameIndex;
             // length should be zero..
-            // TODO: maybe put a check in?? probably no need at thinstanceof
+            // TODO: maybe put a check in?? probably no need at instanceof
             // point..
             attributeLength = Common.readInt(reader);
             // resolve references

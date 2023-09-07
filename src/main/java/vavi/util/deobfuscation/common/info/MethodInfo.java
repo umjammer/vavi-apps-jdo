@@ -91,7 +91,7 @@ public class MethodInfo {
     }
 
     public long getOffset() {
-        if (getAttributes() != null && getAttributes().getItems().size() > 0) {
+        if (getAttributes() != null && !getAttributes().getItems().isEmpty()) {
             try {
                 return ((CodeAttributeInfo) getAttributes().getItems().get(0)).getCodeOffset();
             } catch (Exception e) {
@@ -106,6 +106,7 @@ public class MethodInfo {
         return nameIndex;
     }
 
+    @Override
     public Object clone() {
         MethodInfo newMethodInfo = new MethodInfo();
         newMethodInfo.accessFlags = accessFlags;
